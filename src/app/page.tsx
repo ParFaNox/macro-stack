@@ -4,6 +4,8 @@ import { useState } from "react";
 import { Navbar } from "@/components/navbar";
 import { AgentReasoningFeed } from "@/components/agent-reasoning-feed";
 import { PasskeyModal } from "@/components/passkey-modal";
+import { FadeIn } from "@/components/fade-in";
+import { Footer } from "@/components/footer";
 import { SupplementProduct, AgentReasoningLog, PravaCardDetails } from "@/types";
 import {
   Sparkles,
@@ -19,7 +21,8 @@ import {
   Info,
   Layers,
   Award,
-  Shield
+  Shield,
+  TrendingDown,
 } from "lucide-react";
 
 export default function Dashboard() {
@@ -155,29 +158,31 @@ export default function Dashboard() {
 
   const originalTotal = auditedProducts.reduce((acc, p) => acc + p.totalPriceUSD, 0);
   const auditedTotal = auditedProducts.reduce((acc, p) => acc + p.discountedPriceUSD, 0);
+  const netSavings = originalTotal - auditedTotal;
+  const savingsPercent = originalTotal > 0 ? Math.round((netSavings / originalTotal) * 100) : 0;
 
   const faqs = [
     {
       q: "How does MacroStack AI find the cheapest price?",
-      a: "Our AI agent audits nutrition labels across stores (Amazon, iHerb, Vendor Direct), calculates true cost per active gram (ignoring deceptive filler scoops), and selects the lowest price deals."
+      a: "Our AI agent audits nutrition labels across stores (Amazon, iHerb, Vendor Direct), calculates true cost per active gram (ignoring deceptive filler scoops), and selects the lowest price deals.",
     },
     {
       q: "What does Prava Virtual Card do during checkout?",
-      a: "The agent selects Subscribe & Save (unlocking 15-20% discounts). Prava issues a single-use card hard-capped to the exact total ($135.95) that expires immediately post-checkout, blocking future monthly auto-renewal charges."
+      a: "The agent selects Subscribe & Save (unlocking 15-20% discounts). Prava issues a single-use card hard-capped to the exact total that expires immediately post-checkout, blocking future monthly auto-renewal charges.",
     },
     {
       q: "Are there any hidden fees or markups?",
-      a: "Zero. MacroStack AI is 100% independent. You pay the exact merchant price."
-    }
+      a: "Zero. MacroStack AI is 100% independent. You pay the exact merchant price.",
+    },
   ];
 
   return (
-    <div className="min-h-screen bg-[#08080a] text-[#f0f0f5] font-sans antialiased selection:bg-cyan-400 selection:text-slate-950 flex flex-col items-center">
+    <div className="min-h-screen bg-[#08080a] text-[#f0f0f5] font-sans antialiased selection:bg-cyan-400 selection:text-slate-950 flex flex-col">
       <Navbar />
 
-      <main className="w-full max-w-6xl px-6 py-16 space-y-16 flex flex-col items-center">
-        {/* PERFECTLY CENTERED HERO SECTION */}
-        <section className="w-full flex flex-col items-center text-center space-y-6 max-w-4xl mx-auto pt-4">
+      <main className="flex-1 w-full max-w-6xl mx-auto px-6 py-16 space-y-20 flex flex-col items-center">
+        {/* HERO SECTION */}
+        <FadeIn className="w-full flex flex-col items-center text-center space-y-6 max-w-4xl mx-auto pt-4">
           <div className="inline-flex items-center justify-center gap-2 px-4 py-1.5 rounded-full bg-gradient-to-r from-cyan-500/10 via-blue-500/10 to-indigo-500/10 border border-cyan-400/30 text-cyan-300 text-xs font-bold tracking-wide">
             <Zap className="w-3.5 h-3.5 fill-cyan-400 text-cyan-400" /> Autonomous Multi-Item Stack Audit Engine
           </div>
@@ -192,10 +197,10 @@ export default function Dashboard() {
           <p className="text-[#8f8f9e] text-base sm:text-xl font-normal max-w-xl mx-auto text-center leading-relaxed pt-2">
             Audit nutrition labels across stores, calculate true cost-per-gram, and checkout with single-use Prava Virtual Cards.
           </p>
-        </section>
+        </FadeIn>
 
-        {/* SUBTLE 3-STEP PIPELINE BAR */}
-        <section className="w-full grid grid-cols-1 md:grid-cols-3 gap-4 max-w-5xl mx-auto">
+        {/* 3-STEP PIPELINE BAR */}
+        <FadeIn className="w-full grid grid-cols-1 md:grid-cols-3 gap-4 max-w-5xl mx-auto" delay={150}>
           <div className="p-4 rounded-2xl bg-[#121217] border border-[#22222c] space-y-1 text-center flex flex-col items-center">
             <div className="flex items-center justify-center gap-2 text-cyan-400 font-bold text-xs">
               <Layers className="w-4 h-4" /> 1. Build Stack Cart
@@ -214,100 +219,140 @@ export default function Dashboard() {
             </div>
             <p className="text-[11px] text-[#8f8f9e] text-center">Single-use card expires post-checkout</p>
           </div>
-        </section>
+        </FadeIn>
 
         {/* BENTO GRID: STACK BUILDER CART & LIVE TERMINAL */}
-        <div id="stack-builder" className="w-full grid grid-cols-1 lg:grid-cols-12 gap-8">
-          {/* STACK BUILDER CART (5 COLS) */}
-          <div className="lg:col-span-5 space-y-6">
-            <div className="rounded-3xl bg-[#121217] border border-[#22222c] p-7 space-y-6 shadow-2xl relative overflow-hidden">
-              <div className="flex items-center justify-between pb-4 border-b border-[#22222c]">
-                <div>
-                  <h2 className="text-lg font-bold text-white tracking-tight">Stack Builder</h2>
-                  <p className="text-xs text-[#8f8f9e]">Add items to audit entire stack across merchants</p>
+        <FadeIn className="w-full" delay={200}>
+          <div id="stack-builder" className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            {/* STACK BUILDER CART (5 COLS) */}
+            <div className="lg:col-span-5 space-y-6">
+              <div className="rounded-3xl bg-[#121217] border border-[#22222c] p-7 space-y-6 shadow-2xl relative overflow-hidden">
+                <div className="flex items-center justify-between pb-4 border-b border-[#22222c]">
+                  <div>
+                    <h2 className="text-lg font-bold text-white tracking-tight">Stack Builder</h2>
+                    <p className="text-xs text-[#8f8f9e]">Add items to audit entire stack across merchants</p>
+                  </div>
+                  <span className="text-xs text-cyan-300 font-mono font-bold bg-gradient-to-r from-cyan-500/10 to-blue-500/10 px-3 py-1 rounded-full border border-cyan-400/30">
+                    {stackCart.length} Items
+                  </span>
                 </div>
-                <span className="text-xs text-cyan-300 font-mono font-bold bg-gradient-to-r from-cyan-500/10 to-blue-500/10 px-3 py-1 rounded-full border border-cyan-400/30">
-                  {stackCart.length} Items
-                </span>
-              </div>
 
-              {/* SEARCH & ADD INPUT */}
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  addItemToCart(searchInput);
-                }}
-                className="flex gap-2"
-              >
-                <div className="relative flex-1">
-                  <Search className="absolute left-3.5 top-3 w-4 h-4 text-[#646473]" />
-                  <input
-                    type="text"
-                    placeholder="Search & add custom supplement..."
-                    value={searchInput}
-                    onChange={(e) => setSearchInput(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-[#08080a] border border-[#22222c] text-white placeholder-[#646473] text-xs focus:outline-none focus:border-cyan-400 transition-colors font-medium"
-                  />
-                </div>
-                <button
-                  type="submit"
-                  className="px-4 py-2.5 rounded-xl bg-white hover:bg-slate-200 text-slate-950 font-bold text-xs transition-all cursor-pointer flex items-center gap-1 shadow-md"
+                {/* SEARCH & ADD INPUT */}
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    addItemToCart(searchInput);
+                  }}
+                  className="flex gap-2"
                 >
-                  <Plus className="w-3.5 h-3.5" /> Add
-                </button>
-              </form>
-
-              {/* ITEM STACK LIST */}
-              <div className="space-y-2.5 max-h-72 overflow-y-auto pr-1">
-                {stackCart.map((item, idx) => (
-                  <div
-                    key={idx}
-                    className="flex items-center justify-between p-3.5 rounded-xl bg-[#08080a] border border-[#1e1e28] hover:border-cyan-500/40 transition-colors group"
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3.5 top-3 w-4 h-4 text-[#646473]" />
+                    <input
+                      type="text"
+                      placeholder="Search & add custom supplement..."
+                      value={searchInput}
+                      onChange={(e) => setSearchInput(e.target.value)}
+                      className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-[#08080a] border border-[#22222c] text-white placeholder-[#646473] text-xs focus:outline-none focus:border-cyan-400 transition-colors font-medium"
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    className="px-4 py-2.5 rounded-xl bg-white hover:bg-slate-200 text-slate-950 font-bold text-xs transition-all cursor-pointer flex items-center gap-1 shadow-md"
                   >
-                    <div className="flex items-center gap-3">
-                      <span className="h-2 w-2 rounded-full bg-cyan-400 shadow-sm shadow-cyan-400"></span>
-                      <span className="text-xs font-semibold text-white">{item}</span>
-                    </div>
-                    <button
-                      onClick={() => removeItemFromCart(idx)}
-                      className="text-[#646473] hover:text-rose-400 p-1 transition-colors cursor-pointer"
-                      title="Remove item"
+                    <Plus className="w-3.5 h-3.5" /> Add
+                  </button>
+                </form>
+
+                {/* ITEM STACK LIST */}
+                <div className="space-y-2.5 max-h-72 overflow-y-auto pr-1">
+                  {stackCart.map((item, idx) => (
+                    <div
+                      key={idx}
+                      className="flex items-center justify-between p-3.5 rounded-xl bg-[#08080a] border border-[#1e1e28] hover:border-cyan-500/40 transition-colors group"
                     >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                      <div className="flex items-center gap-3">
+                        <span className="h-2 w-2 rounded-full bg-cyan-400 shadow-sm shadow-cyan-400"></span>
+                        <span className="text-xs font-semibold text-white">{item}</span>
+                      </div>
+                      <button
+                        onClick={() => removeItemFromCart(idx)}
+                        className="text-[#646473] hover:text-rose-400 p-1 transition-colors cursor-pointer"
+                        title="Remove item"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+
+                {/* BLUE GRADIENT MAIN AUDIT BUTTON */}
+                <button
+                  onClick={handleAuditEntireStack}
+                  disabled={isAuditing || stackCart.length === 0}
+                  className="w-full py-4 rounded-xl bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-500 hover:from-cyan-300 hover:to-indigo-400 text-slate-950 font-black text-xs uppercase tracking-wider transition-all disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2 shadow-xl shadow-cyan-500/25 hover:scale-[1.02]"
+                >
+                  {isAuditing ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" /> Auditing Entire Stack...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-4 h-4 fill-slate-950 stroke-[2.5]" /> Audit Entire Stack ({stackCart.length} Items)
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* LOG TERMINAL (7 COLS) */}
+            <div id="audit-log" className="lg:col-span-7">
+              <AgentReasoningFeed logs={reasoningLogs} isSearching={isAuditing || isCheckoutExecuting} />
+            </div>
+          </div>
+        </FadeIn>
+
+        {/* SKELETON LOADING STATE WHILE AUDITING */}
+        {isAuditing && (
+          <section className="w-full space-y-6 pt-4">
+            <div className="rounded-3xl bg-[#121217] border border-[#22222c] p-8 space-y-6 shadow-2xl">
+              <div className="flex justify-between items-end pb-6 border-b border-[#22222c]">
+                <div className="space-y-2">
+                  <div className="skeleton-pulse h-3 w-24"></div>
+                  <div className="skeleton-pulse h-7 w-56"></div>
+                </div>
+                <div className="space-y-2 items-end flex flex-col">
+                  <div className="skeleton-pulse h-3 w-32"></div>
+                  <div className="skeleton-pulse h-7 w-28"></div>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className="p-4 rounded-2xl bg-[#08080a] border border-[#1e1e28] space-y-3">
+                    <div className="skeleton-pulse h-4 w-20"></div>
+                    <div className="skeleton-pulse h-4 w-40"></div>
+                    <div className="skeleton-pulse h-3 w-full"></div>
                   </div>
                 ))}
               </div>
-
-              {/* BLUE GRADIENT MAIN AUDIT BUTTON */}
-              <button
-                onClick={handleAuditEntireStack}
-                disabled={isAuditing || stackCart.length === 0}
-                className="w-full py-4 rounded-xl bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-500 hover:from-cyan-300 hover:to-indigo-400 text-slate-950 font-black text-xs uppercase tracking-wider transition-all disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2 shadow-xl shadow-cyan-500/25 hover:scale-[1.02]"
-              >
-                {isAuditing ? (
-                  <>
-                    <RefreshCw className="w-4 h-4 animate-spin" /> Auditing Entire Stack...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="w-4 h-4 fill-slate-950 stroke-[2.5]" /> Audit Entire Stack ({stackCart.length} Items)
-                  </>
-                )}
-              </button>
             </div>
-          </div>
-
-          {/* LOG TERMINAL (7 COLS) */}
-          <div id="audit-log" className="lg:col-span-7">
-            <AgentReasoningFeed logs={reasoningLogs} isSearching={isAuditing || isCheckoutExecuting} />
-          </div>
-        </div>
+          </section>
+        )}
 
         {/* RESULTS & PRAVA CHECKOUT */}
         {auditedProducts.length > 0 && (
-          <section className="w-full space-y-6 pt-4">
+          <FadeIn className="w-full space-y-6 pt-4">
             <div className="rounded-3xl bg-[#121217] border border-[#22222c] p-8 space-y-6 shadow-2xl">
+              {/* SAVINGS CALLOUT CHIP */}
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-cyan-500/15 to-blue-500/15 border border-cyan-400/30">
+                  <TrendingDown className="w-4 h-4 text-cyan-400" />
+                  <span className="text-xs font-black text-cyan-300">
+                    You save ${netSavings.toFixed(2)} ({savingsPercent}%) on your entire stack
+                  </span>
+                </div>
+                <span className="text-[10px] text-[#646473]">vs. buying each item at full retail price</span>
+              </div>
+
               <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-[#22222c] pb-6">
                 <div>
                   <span className="text-xs uppercase tracking-wider text-[#8f8f9e] font-bold font-mono">Audit Complete</span>
@@ -315,7 +360,10 @@ export default function Dashboard() {
                 </div>
                 <div className="text-right">
                   <span className="text-xs text-[#8f8f9e] block font-medium">Total Audited Stack Price</span>
-                  <span className="text-3xl font-mono font-bold text-cyan-400">${auditedTotal.toFixed(2)}</span>
+                  <div className="flex items-baseline gap-2 justify-end">
+                    <span className="text-lg font-mono text-[#646473] line-through">${originalTotal.toFixed(2)}</span>
+                    <span className="text-3xl font-mono font-bold text-cyan-400">${auditedTotal.toFixed(2)}</span>
+                  </div>
                 </div>
               </div>
 
@@ -327,8 +375,11 @@ export default function Dashboard() {
                     </span>
                     <h4 className="text-sm font-bold text-white">{prod.productName}</h4>
                     <div className="flex justify-between text-xs font-mono pt-1 text-slate-300">
-                      <span>Subscribe & Save Deals</span>
-                      <span className="text-cyan-400 font-bold">${prod.discountedPriceUSD.toFixed(2)}</span>
+                      <span>Subscribe & Save</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[#646473] line-through">${prod.totalPriceUSD.toFixed(2)}</span>
+                        <span className="text-cyan-400 font-bold">${prod.discountedPriceUSD.toFixed(2)}</span>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -360,11 +411,11 @@ export default function Dashboard() {
                 )}
               </div>
             </div>
-          </section>
+          </FadeIn>
         )}
 
         {/* ACCORDION FAQ SECTION */}
-        <section className="w-full max-w-3xl mx-auto space-y-4 pt-4">
+        <FadeIn className="w-full max-w-3xl mx-auto space-y-4 pt-4" delay={100}>
           <div className="flex items-center justify-center gap-2 text-xs font-bold text-[#8f8f9e] uppercase tracking-wider text-center">
             <Info className="w-4 h-4 text-cyan-400" /> Frequently Asked Questions
           </div>
@@ -379,19 +430,26 @@ export default function Dashboard() {
                     className="w-full p-4 text-left flex justify-between items-center text-xs font-bold text-white hover:text-cyan-300 transition-colors cursor-pointer"
                   >
                     <span>{faq.q}</span>
-                    <ChevronDown className={`w-4 h-4 text-[#8f8f9e] transition-transform ${isOpen ? "rotate-180 text-cyan-400" : ""}`} />
+                    <ChevronDown
+                      className={`w-4 h-4 text-[#8f8f9e] transition-transform duration-200 ${isOpen ? "rotate-180 text-cyan-400" : ""}`}
+                    />
                   </button>
-                  {isOpen && (
+                  <div
+                    className="overflow-hidden transition-all duration-300 ease-in-out"
+                    style={{ maxHeight: isOpen ? "200px" : "0px", opacity: isOpen ? 1 : 0 }}
+                  >
                     <div className="px-4 pb-4 text-xs text-[#8f8f9e] leading-relaxed border-t border-[#1e1e28] pt-3">
                       {faq.a}
                     </div>
-                  )}
+                  </div>
                 </div>
               );
             })}
           </div>
-        </section>
+        </FadeIn>
       </main>
+
+      <Footer />
 
       <PasskeyModal
         isOpen={isPasskeyModalOpen}

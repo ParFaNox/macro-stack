@@ -75,38 +75,109 @@ checkout." **Prava already does this.** From their
 meaning it needs *real products at real Shopify merchants*. Our catalog is 15
 synthetic products with `example-merchant.test` URLs that do not resolve.
 
-So you have a fork in the road, and it matters:
+Better still: **Prava ships a hosted MCP server** at `https://mcp.pay.prava.space/mcp`
+— one URL, sign in once, works with any MCP client. It exposes 18 tools,
+including `shop_search`, `shop_product`, `shop_quote`, `shop_checkout`,
+`create_payment_session`, and the full mandate lifecycle.
+([overview](https://docs.prava.space/mcp/overview) ·
+[tools reference](https://docs.prava.space/mcp/tools))
 
-### Route A — Real Prava sandbox + your own mock merchant *(recommended)*
+That solves **two** problems in one move, which is why it's the recommended route.
 
-Mint genuinely real single-use credentials against Prava's sandbox API, then
-check out against a mock Shopify-shaped store you host at `/mock-merchant`.
+### Route A — Prava MCP *(recommended)*
 
-- **Real:** session creation, card minting, mandate lifecycle, test cards, OTP,
-  card expiry after use. All real HTTP calls to `sandbox.api.prava.space`.
-- **Simulated:** the merchant.
-- **Why:** works with our synthetic catalog, no KYB, no real money, and the
-  payments integration — the part judges will probe — is genuinely real.
-- **Cost:** you write the Playwright script and the mock store.
+Connect our agent to Prava's MCP and let it discover, quote, and buy.
 
-### Route B — Real Shopify merchant + Prava's Browser Harness
+The flow maps almost exactly onto what already exists:
 
-Drop our catalog, use Prava's UCP product discovery against real Shopify
-merchants, and let their harness do the checkout.
+```
+shop_search("creatine monohydrate")     ← real products, real prices
+  → our Gemini label audit + cost-per-active-gram ranking   ← already built
+    → shop_quote                        ← locks the true total
+      → create_payment_session          ← user approves by passkey
+        → shop_checkout                 ← order placed
+```
 
-- **Real:** everything, end to end.
-- **Cost:** our seed catalog and Teammate 2's label auditing become decorative,
-  because you'd be pricing real Shopify products instead. Also a much larger
-  pivot with more unknowns.
-- **Only take this if** you have time to spare and are willing to rework the
-  product data story with Teammate 2.
+- **Satisfies the hard requirement.** "Use Prava as a real part of the product"
+  and "an agent completing a transaction" are both literally true.
+- **Fixes the invented inventory** (see §4 below) — `shop_search` returns real
+  products from real Shopify merchants via UCP.
+- **No KYB.** The MCP/CLI path verifies you by card enrollment (KYC), not
+  business incorporation.
+- **Human approval is built in** — the agent never touches card data. That's a
+  feature to show off, not a limitation.
 
-**Take Route A.** It preserves everyone's work and still gives you a real
-payments integration. Route B is the "if we had another day" version.
+> **Check before you call `shop_checkout`.** The MCP docs don't mention a
+> sandbox, and this path enrolls a **real card**. Confirm sandbox availability in
+> Prava's Discord or office hours first. Do not discover this by spending your
+> own money on creatine.
+
+### Route B — REST sandbox + your own mock merchant *(fallback)*
+
+If MCP has no sandbox and nobody wants to spend real money: mint real
+credentials against `sandbox.api.prava.space`, and check out against a mock
+Shopify-shaped store you host at `/mock-merchant`.
+
+- **Real:** sessions, card minting, mandates, test cards, OTP, card revocation.
+- **Simulated:** the merchant, and therefore the products stay synthetic.
+- **Cost:** you write both the Playwright script and the mock store.
+
+Route B is a solid fallback and everything in §5 and §6 still applies to it. But it
+leaves the "where do your prices come from?" question unanswered, so try Route A
+first.
 
 ---
 
-## 4. Step-by-step plan (Route A)
+## 4. P0 — Replace the invented inventory
+
+**This is the single weakest point in the whole project and it is now yours,
+because the fix runs through Prava.**
+
+Right now `src/lib/agent/catalog.ts` is 15 hand-written products with
+`example-merchant.test` URLs that do not resolve. Every price in the demo is
+invented. "Where do your prices come from?" is the first question a judge asks,
+and today the honest answer is "we made them up."
+
+`shop_search` fixes it. There is already a seam built for exactly this:
+[src/lib/agent/product-search.ts](src/lib/agent/product-search.ts) exposes
+
+```ts
+searchProducts(query: string): Promise<ProductSearchResult>
+```
+
+and *everything* downstream — label audits, cost-per-gram, ranking, budget
+selection, the UI — depends only on `CatalogEntry[]`, never on where the entries
+came from. Add a third provider alongside `seed` and `brightdata`:
+
+1. Call `shop_search` / `shop_product` through Prava's MCP.
+2. Map each result into `CatalogEntry` (see the `brightdata` provider in that
+   file for a worked example of the mapping and the LLM normalisation pass).
+3. Keep the existing fallback contract: **never throw.** On any failure return
+   the seed catalog with a `fallbackReason`, which the reasoning feed already
+   surfaces. A demo should degrade to synthetic-but-working, never to a blank page.
+4. Set `sourceMode: 'LIVE_RETAIL_SEARCH'` so the UI can honestly badge real data.
+
+### The trade-off, so it doesn't surprise you
+
+Real listings have **product photos, not supplement-facts panels**. Teammate 2's
+Gemini auditor reads facts panels; point it at a product photo and it will
+correctly report low confidence. So as pricing becomes real, the *label audit*
+gets weaker on those items.
+
+Options, roughly in order of effort:
+
+- Accept it — low confidence is the honest reading, and the audit already reports
+  `confidence` per product.
+- Use `shop_product` to pull additional images and pick the one that looks like a
+  panel (many listings include one).
+- Keep the synthetic catalog as a labelled "demo mode" toggle, so you can show
+  the full vision pipeline *and* real pricing in the same presentation.
+
+Talk to Teammate 2 before choosing. Do not silently ship whichever is easiest.
+
+---
+
+## 5. Step-by-step plan
 
 ### Step 0 — Accounts and env (30 min)
 
@@ -248,7 +319,7 @@ streaming progress matters a lot more here than it did for auditing.
 
 ---
 
-## 5. Testing
+## 6. Testing
 
 Sandbox test cards (from [Test Cards](https://docs.prava.space/api-reference/test-cards)):
 
@@ -276,18 +347,17 @@ Definition of done:
 
 ---
 
-## 6. Reality check — will this be a deployable webapp?
+## 7. Reality check — will this be a deployable webapp?
 
 You asked whether finishing this gives a working product or just a better mock.
 Honestly: **a genuinely impressive end-to-end demo, but not a deployable
 consumer product.** Four things block that, and only one is yours.
 
-**1. The products aren't real.** The catalog is 15 hand-written products with
-`example-merchant.test` URLs. There is a real-search seam at
-[src/lib/agent/product-search.ts](src/lib/agent/product-search.ts) with a Bright
-Data provider written against the documented SERP API — but it has **never been
-executed**, and needs an account. Until that runs, every price is invented, so
-there is nothing real to buy.
+**1. The products aren't real — yet.** See §4: this is now a P0 on your plate,
+and `shop_search` is the fix. A Bright Data provider also exists in
+[product-search.ts](src/lib/agent/product-search.ts) as a second option, but it
+has **never been executed** and needs its own account. Until one of them runs,
+every price is invented and there is nothing real to buy.
 
 **2. Going live needs a legal entity — on one path.** Per Prava's
 [compliance docs](https://docs.prava.space/guides/compliance):
@@ -307,12 +377,13 @@ shipping-address capture — you'd hardcode an address into
 - **Playwright will not run on Vercel serverless.** You need a container host
   (Fly.io, Railway, Render) or a separate worker. Decide this early — it affects
   how you structure `/api/checkout/execute`.
-- **The label-audit cache writes to disk** (`.macrostack-cache/`), which is
-  read-only on Vercel. It degrades silently to in-memory, so every cold start
-  re-audits 15 labels, blows the 20 req/min Gemini limit, and quietly falls back
-  to mock readings. Fix by committing the warmed cache JSON as a seed file or
-  moving it to a KV store. *(Teammate 2's issue, not yours — but it will bite the
-  deployed demo, so make sure it gets done.)*
+- ~~The label-audit cache writes to disk, which is read-only on Vercel.~~
+  **Fixed.** Readings now ship in a committed seed
+  (`src/lib/agent/label-audit-seed.json`), imported and bundled, so deployments
+  start warm with zero API calls. Verified: a run with no local cache served
+  15/15 live readings in 53 ms. If you change `VISION_MODEL`, re-run
+  `npm run warm-labels && npm run save-label-cache` and commit — the cache is
+  keyed by model, so a Gemini-warmed seed is deliberately not reused for GPT-4o.
 
 **Also worth saying out loud:** automating checkout on real third-party
 retailers generally violates their terms of service, and card automation moves
@@ -332,7 +403,7 @@ KYB — not more code from you.
 
 ---
 
-## 7. Rules of the road
+## 8. Rules of the road
 
 - **Don't edit** `src/lib/agent/**`, `src/app/api/{optimize,audit-label,mcp,labels}/**`,
   or `src/app/labels/**` without telling Teammate 2 — that's the agent layer.

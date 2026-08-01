@@ -1,0 +1,307 @@
+{
+  "gemini-3.5-flash::/labels/creatine_bulk_500": {
+    "imageUrl": "/labels/creatine_bulk_500",
+    "source": "LIVE_VISION_MODEL",
+    "modelId": "gemini-3.5-flash",
+    "activeIngredients": [
+      {
+        "name": "Creatine Monohydrate",
+        "amountPerServingGrams": 5,
+        "purityPercentage": 99.9
+      }
+    ],
+    "servingsPerContainer": 100,
+    "fillerCallouts": [
+      "Silicon dioxide flow agent added (0.3g per serving)"
+    ],
+    "fillerPercentage": 5.66,
+    "confidence": 1,
+    "notes": "The label specifies a serving size of 5.3 g containing 5 g of Creatine Monohydrate. The remaining 0.3 g (5.66%) is accounted for by the anti-caking agent Silicon dioxide listed under Other Ingredients."
+  },
+  "gemini-3.5-flash::/labels/creatine_peakform_300": {
+    "imageUrl": "/labels/creatine_peakform_300",
+    "source": "LIVE_VISION_MODEL",
+    "modelId": "gemini-3.5-flash",
+    "activeIngredients": [
+      {
+        "name": "Creatine Monohydrate",
+        "amountPerServingGrams": 5,
+        "purityPercentage": 99.5
+      }
+    ],
+    "servingsPerContainer": 60,
+    "fillerCallouts": [],
+    "fillerPercentage": 7.4,
+    "confidence": 1,
+    "notes": "The serving size is 5.4 g, with 5 g of active Creatine Monohydrate (at 99.5% assay purity). The remaining 0.4 g (approximately 7.4% of the serving) is made up of the inactive ingredients: silicon dioxide and natural flavor."
+  },
+  "gemini-3.5-flash::/labels/citrulline_bulk_300": {
+    "imageUrl": "/labels/citrulline_bulk_300",
+    "source": "LIVE_VISION_MODEL",
+    "modelId": "gemini-3.5-flash",
+    "activeIngredients": [
+      {
+        "name": "L-Citrulline Malate",
+        "amountPerServingGrams": 6,
+        "purityPercentage": 98
+      }
+    ],
+    "servingsPerContainer": 50,
+    "fillerCallouts": [],
+    "fillerPercentage": 3.23,
+    "confidence": 1,
+    "notes": "The label is highly transparent, specifying a 6g active dosage of 98% pure L-Citrulline Malate within a 6.2g total serving size. The remaining 0.2g (3.23%) is Silicon dioxide used as an anti-caking flow agent."
+  },
+  "gemini-3.5-flash::/labels/citrulline_peakform_200": {
+    "imageUrl": "/labels/citrulline_peakform_200",
+    "source": "LIVE_VISION_MODEL",
+    "modelId": "gemini-3.5-flash",
+    "activeIngredients": [
+      {
+        "name": "L-Citrulline Malate",
+        "amountPerServingGrams": 5,
+        "purityPercentage": 97.5
+      }
+    ],
+    "servingsPerContainer": 40,
+    "fillerCallouts": [],
+    "fillerPercentage": 3.85,
+    "confidence": 1,
+    "notes": "Highly transparent label explicitly disclosing a 97.5% assay purity for the L-Citrulline Malate. The remaining 3.85% of the serving size (0.2g out of 5.2g) consists of silicon dioxide and natural flavor."
+  },
+  "gemini-3.5-flash::/labels/whey_cleanwhey_2lb": {
+    "imageUrl": "/labels/whey_cleanwhey_2lb",
+    "source": "LIVE_VISION_MODEL",
+    "modelId": "gemini-3.5-flash",
+    "activeIngredients": [
+      {
+        "name": "Whey Protein Isolate",
+        "amountPerServingGrams": 25,
+        "purityPercentage": 90
+      }
+    ],
+    "servingsPerContainer": 30,
+    "fillerCallouts": [],
+    "fillerPercentage": 10.71,
+    "confidence": 1,
+    "notes": "Highly legible label. Active ingredient Whey Protein Isolate is 25g out of a 28g serving size (90% purity). The remaining 3g (10.71%) contains lecithin, flavoring, and stevia sweetener."
+  },
+  "gemini-3.5-flash::/labels/whey_massline_2lb": {
+    "imageUrl": "/labels/whey_massline_2lb",
+    "source": "LIVE_VISION_MODEL",
+    "modelId": "gemini-3.5-flash",
+    "activeIngredients": [
+      {
+        "name": "Whey Protein Concentrate",
+        "amountPerServingGrams": 22,
+        "purityPercentage": 78
+      }
+    ],
+    "servingsPerContainer": 28,
+    "fillerCallouts": [
+      "Amino spiking",
+      "High percentage of undisclosed binders/fillers"
+    ],
+    "fillerPercentage": 31.25,
+    "confidence": 1,
+    "notes": "The label indicates amino spiking due to Glycine and Taurine being listed in the 'Other Ingredients' section, which artificially inflates nitrogen/protein content. Furthermore, only 22g out of the 32g serving size is Whey Protein Concentrate, meaning 10g (31.25%) consists of other ingredients/fillers."
+  },
+  "gemini-3.5-flash::/labels/betaalanine_bulk_200": {
+    "imageUrl": "/labels/betaalanine_bulk_200",
+    "source": "LIVE_VISION_MODEL",
+    "modelId": "gemini-3.5-flash",
+    "activeIngredients": [
+      {
+        "name": "Beta-Alanine",
+        "amountPerServingGrams": 3.2,
+        "purityPercentage": 99
+      }
+    ],
+    "servingsPerContainer": 62,
+    "fillerCallouts": [],
+    "fillerPercentage": 4,
+    "confidence": 1,
+    "notes": "Highly transparent label showing 99% assay purity for Beta-Alanine with silicon dioxide as the only other ingredient. The 3.3g serving size contains 3.2g of Beta-Alanine at 99% purity, leaving approximately 4% of the serving size as inactive filler (silicon dioxide and assay impurities)."
+  },
+  "gemini-3.5-flash::/labels/betaalanine_peakform_100": {
+    "imageUrl": "/labels/betaalanine_peakform_100",
+    "source": "LIVE_VISION_MODEL",
+    "modelId": "gemini-3.5-flash",
+    "activeIngredients": [
+      {
+        "name": "Beta-Alanine",
+        "amountPerServingGrams": 3.2,
+        "purityPercentage": 98.5
+      }
+    ],
+    "servingsPerContainer": 31,
+    "fillerCallouts": [],
+    "fillerPercentage": 4.48,
+    "confidence": 1,
+    "notes": "Highly transparent label showing 98.5% assay purity for Beta-Alanine. Silicon dioxide (0.1 g per serving) is used as an anti-caking agent."
+  },
+  "gemini-3.5-flash::/labels/prop_endurance_matrix": {
+    "imageUrl": "/labels/prop_endurance_matrix",
+    "source": "LIVE_VISION_MODEL",
+    "modelId": "gemini-3.5-flash",
+    "activeIngredients": [
+      {
+        "name": "Endurance Matrix Proprietary Blend (Beta-Alanine, Taurine, Caffeine Anhydrous)",
+        "amountPerServingGrams": 5.5,
+        "purityPercentage": 30
+      }
+    ],
+    "servingsPerContainer": 30,
+    "fillerCallouts": [
+      "Proprietary blend hiding individual ingredient doses",
+      "Fillers (Rice Flour, Maltodextrin) listed before active ingredients in proprietary blend",
+      "Significant serving size discrepancy (1.5g of unnamed fillers outside the 5.5g blend)"
+    ],
+    "fillerPercentage": 76,
+    "confidence": 1,
+    "notes": "The serving size is 7g, but the proprietary blend is only 5.5g, leaving 1.5g (21.4%) as other ingredients (silicon dioxide, sucralose). Within the 5.5g proprietary blend, the top two ingredients by weight are Rice Flour and Maltodextrin, meaning the actual active ingredients (Beta-Alanine, Taurine, Caffeine) likely constitute less than 30% of the blend, resulting in an estimated total filler percentage of approximately 76%."
+  },
+  "gemini-3.5-flash::/labels/electrolytes_hydrasalt_30": {
+    "imageUrl": "/labels/electrolytes_hydrasalt_30",
+    "source": "LIVE_VISION_MODEL",
+    "modelId": "gemini-3.5-flash",
+    "activeIngredients": [
+      {
+        "name": "Sodium Chloride",
+        "amountPerServingGrams": 2,
+        "purityPercentage": 97
+      },
+      {
+        "name": "Potassium Citrate",
+        "amountPerServingGrams": 1,
+        "purityPercentage": 95
+      },
+      {
+        "name": "Magnesium Malate",
+        "amountPerServingGrams": 0.5,
+        "purityPercentage": 94
+      }
+    ],
+    "servingsPerContainer": 30,
+    "fillerCallouts": [],
+    "fillerPercentage": 12.5,
+    "confidence": 1,
+    "notes": "The label is exceptionally transparent, disclosing specific assay purities for each compound. Active ingredients total 3.5 g, leaving 0.5 g (12.5% of the 4 g serving size) for citric acid, flavor, and sweetener."
+  },
+  "gemini-3.5-flash::/labels/electrolytes_vitalroot_60": {
+    "imageUrl": "/labels/electrolytes_vitalroot_60",
+    "source": "LIVE_VISION_MODEL",
+    "modelId": "gemini-3.5-flash",
+    "activeIngredients": [
+      {
+        "name": "Sodium Chloride",
+        "amountPerServingGrams": 1.8,
+        "purityPercentage": 96
+      },
+      {
+        "name": "Potassium Citrate",
+        "amountPerServingGrams": 0.8,
+        "purityPercentage": 94
+      },
+      {
+        "name": "Magnesium Malate",
+        "amountPerServingGrams": 0.4,
+        "purityPercentage": 93
+      }
+    ],
+    "servingsPerContainer": 60,
+    "fillerCallouts": [],
+    "fillerPercentage": 14.29,
+    "confidence": 1,
+    "notes": "Extremely transparent label explicitly stating the assay purity for each mineral source. The active mineral compounds total 3.0 g out of the 3.5 g serving size, with the remaining 14.29% consisting of flavorings, acidifiers, and sweeteners listed under other ingredients."
+  },
+  "gemini-3.5-flash::/labels/prop_creasurge_matrix": {
+    "imageUrl": "/labels/prop_creasurge_matrix",
+    "source": "LIVE_VISION_MODEL",
+    "modelId": "gemini-3.5-flash",
+    "activeIngredients": [
+      {
+        "name": "CreaSurge Matrix™ Proprietary Blend (Maltodextrin, Dextrose, Taurine, Creatine Monohydrate, Citric Acid, Natural & Artificial Flavor, Sucralose)",
+        "amountPerServingGrams": 6.5,
+        "purityPercentage": 30
+      }
+    ],
+    "servingsPerContainer": 30,
+    "fillerCallouts": [
+      "Proprietary blend hides individual ingredient dosages",
+      "Fillers and sugars (Maltodextrin, Dextrose) listed before active ingredients (Taurine, Creatine)",
+      "Likely underdosed active ingredients"
+    ],
+    "fillerPercentage": 70,
+    "confidence": 1,
+    "notes": "The proprietary blend is 6.5g out of an 8g serving. Maltodextrin and Dextrose are listed as the first two ingredients in the blend, meaning they comprise the majority of the weight, leaving very little room for clinical doses of Creatine Monohydrate and Taurine."
+  },
+  "gemini-3.5-flash::/labels/whey_peakform_5lb": {
+    "imageUrl": "/labels/whey_peakform_5lb",
+    "source": "LIVE_VISION_MODEL",
+    "modelId": "gemini-3.5-flash",
+    "activeIngredients": [
+      {
+        "name": "Whey Protein Isolate",
+        "amountPerServingGrams": 25,
+        "purityPercentage": 91
+      }
+    ],
+    "servingsPerContainer": 76,
+    "fillerCallouts": [],
+    "fillerPercentage": 10.71,
+    "confidence": 1,
+    "notes": "The label is highly transparent, explicitly stating the 91% assay purity of the whey protein isolate. The remaining 3g (10.71%) of the 28g serving consists of lecithin, natural flavor, and stevia."
+  },
+  "gemini-3.5-flash::/labels/electrolytes_peakform_20": {
+    "imageUrl": "/labels/electrolytes_peakform_20",
+    "source": "LIVE_VISION_MODEL",
+    "modelId": "gemini-3.5-flash",
+    "activeIngredients": [
+      {
+        "name": "Sodium Chloride",
+        "amountPerServingGrams": 1.5,
+        "purityPercentage": 95
+      },
+      {
+        "name": "Potassium Citrate",
+        "amountPerServingGrams": 0.9,
+        "purityPercentage": 92
+      },
+      {
+        "name": "Magnesium Malate",
+        "amountPerServingGrams": 0.4,
+        "purityPercentage": 91
+      }
+    ],
+    "servingsPerContainer": 20,
+    "fillerCallouts": [
+      "Sugar/fillers make up over 50% of serving weight",
+      "Cane sugar listed as primary other ingredient"
+    ],
+    "fillerPercentage": 53.33,
+    "confidence": 1,
+    "notes": "The total serving size is 6 g, while the active ingredients sum to 2.8 g. The remaining 3.2 g (53.33%) consists of cane sugar, citric acid, and natural flavor."
+  },
+  "gemini-3.5-flash::/labels/prop_pumpblend": {
+    "imageUrl": "/labels/prop_pumpblend",
+    "source": "LIVE_VISION_MODEL",
+    "modelId": "gemini-3.5-flash",
+    "activeIngredients": [
+      {
+        "name": "Pump Matrix™ Proprietary Blend (L-Citrulline Malate, Beet Root Powder, Taurine)",
+        "amountPerServingGrams": 5,
+        "purityPercentage": 40
+      }
+    ],
+    "servingsPerContainer": 25,
+    "fillerCallouts": [
+      "Proprietary blend hiding active ingredient dosages",
+      "Maltodextrin listed as the primary ingredient in the active blend",
+      "Significant gap between serving size (6.5g) and blend size (5.0g)"
+    ],
+    "fillerPercentage": 69,
+    "confidence": 1,
+    "notes": "Maltodextrin is the first ingredient listed in the 5,000 mg proprietary blend, indicating it is the primary component. Combined with the 1.5 g of non-blend ingredients (Silicon dioxide, Sucralose), the total filler content is estimated at nearly 70% of the serving size."
+  }
+}

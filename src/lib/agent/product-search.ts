@@ -3,6 +3,7 @@ import { z } from 'zod';
 
 import type { CatalogEntry } from '@/types/agent';
 import { SUPPLEMENT_CATALOG, matchIngredientFamily } from './catalog';
+import { DEFAULT_VISION_BASE_URL, visionModelId } from './vision-auditor';
 
 /**
  * Product search.
@@ -161,13 +162,11 @@ async function normaliseHits(
 ): Promise<z.infer<typeof NormalisedProductSchema>['products']> {
   const client = new OpenAI({
     apiKey: process.env.VISION_API_KEY,
-    baseURL:
-      process.env.VISION_BASE_URL?.trim() ||
-      'https://generativelanguage.googleapis.com/v1beta/openai/',
+    baseURL: process.env.VISION_BASE_URL?.trim() || DEFAULT_VISION_BASE_URL,
   });
 
   const completion = await client.chat.completions.create({
-    model: process.env.VISION_MODEL?.trim() || 'gemini-3.5-flash',
+    model: visionModelId(),
     response_format: { type: 'json_object' },
     temperature: 0,
     max_completion_tokens: 8192,

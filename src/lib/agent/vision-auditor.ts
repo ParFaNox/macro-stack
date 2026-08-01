@@ -6,15 +6,17 @@ import { z } from 'zod';
 
 import type { ActiveIngredient } from '@/types';
 import type { LabelAuditResult } from '@/types/agent';
+import SEED_AUDITS from './label-audit-seed.json';
 import { findCatalogEntryByLabelUrl } from './catalog';
 
 /**
  * Nutrition-label auditor.
  *
- * The task docs specified GPT-4o Vision, which is paid. This targets Google
- * Gemini through its OpenAI-COMPATIBLE endpoint instead, so the `openai` SDK is
- * reused unchanged and only the base URL / model name differ. Pointing
- * VISION_BASE_URL at Groq, OpenRouter or OpenAI proper needs no code change.
+ * Provider-neutral by design: the `openai` SDK talks to whatever
+ * VISION_BASE_URL points at. Defaults to OpenAI + gpt-4o (the hackathon
+ * supplies OpenAI credits, and there is an award for OpenAI usage). Setting
+ * VISION_BASE_URL to Gemini's OpenAI-compatible endpoint, or to Groq or
+ * OpenRouter, needs no code change — only env vars.
  *
  * With no VISION_API_KEY the auditor returns deterministic mock audits, so the
  * whole app is runnable with zero setup. The `source` field on every result
@@ -22,11 +24,17 @@ import { findCatalogEntryByLabelUrl } from './catalog';
  * should never quietly pass mock output off as a live model call.
  */
 
-const DEFAULT_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/openai/';
-// gemini-3.6-flash exists but its free tier is capped at 20 requests, which a
-// single 15-label warm run exhausts. 3.5-flash is multimodal with a workable
-// free allowance.
-const DEFAULT_MODEL = 'gemini-3.5-flash';
+export const DEFAULT_VISION_BASE_URL = 'https://api.openai.com/v1';
+const DEFAULT_BASE_URL = DEFAULT_VISION_BASE_URL;
+const DEFAULT_MODEL = 'gpt-4o';
+
+/**
+ * Free alternative, kept documented because it needs no billing at all.
+ * Gemini's free tier is 20 requests/minute and a 5-ingredient stack fires 15
+ * audits, so warm the cache (`npm run warm-labels`) before demoing on it.
+ *   VISION_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai/
+ *   VISION_MODEL=gemini-3.5-flash
+ */
 
 export function hasVisionKey(): boolean {
   return Boolean(process.env.VISION_API_KEY?.trim());
@@ -175,11 +183,26 @@ async function auditWithVisionModel(imageUrl: string): Promise<LabelAuditResult>
 const auditCache = new Map<string, LabelAuditResult>();
 
 /**
- * The cache is also persisted to disk, because the free tier's per-minute cap
- * is the real constraint: a 5-ingredient stack needs 15 audits, which no amount
- * of in-request pacing can fit under the limit. Run `npm run warm-labels` once
- * to populate this slowly, and every later run is instant, fully live-audited
- * and costs zero quota. Gitignored — it's a local cache, not source.
+ * Cache keys include the model id. Readings differ between models, so a cache
+ * warmed on Gemini must not be served as though GPT-4o produced it — switching
+ * `VISION_MODEL` should re-audit rather than silently reuse another model's work.
+ */
+function cacheKey(imageUrl: string): string {
+  return `${visionModelId()}::${imageUrl}`;
+}
+
+/**
+ * Two layers, because a serverless filesystem is read-only.
+ *
+ * 1. `label-audit-seed.json` is committed and imported, so it is bundled into
+ *    the deployment. Without it, a Vercel cold start re-audits every label,
+ *    blows the provider rate limit, and quietly degrades the whole demo to mock
+ *    readings — the failure is silent, which is what makes it dangerous.
+ * 2. `.macrostack-cache/` is a local dev overlay for iterating without burning
+ *    quota. Gitignored; writes fail harmlessly on a read-only filesystem.
+ *
+ * `npm run warm-labels` populates (2); `npm run save-label-cache` promotes it
+ * into (1) for committing.
  */
 const CACHE_FILE = path.join(process.cwd(), '.macrostack-cache', 'label-audits.json');
 let cacheLoaded = false;
@@ -187,13 +210,20 @@ let cacheLoaded = false;
 function loadCacheFromDisk(): void {
   if (cacheLoaded) return;
   cacheLoaded = true;
+
+  // Committed seed first — always available, including on read-only hosts.
+  for (const [key, value] of Object.entries(SEED_AUDITS as Record<string, LabelAuditResult>)) {
+    auditCache.set(key, value);
+  }
+
+  // Local overlay wins, so a fresh warm run beats a stale committed seed.
   try {
     const raw = fs.readFileSync(CACHE_FILE, 'utf8');
     for (const [key, value] of Object.entries(JSON.parse(raw) as Record<string, LabelAuditResult>)) {
       auditCache.set(key, value);
     }
   } catch {
-    // No cache yet — expected on a fresh clone.
+    // No local cache — expected on a fresh clone and in production.
   }
 }
 
@@ -250,7 +280,18 @@ function releaseSlot(): void {
   waiting.shift()?.();
 }
 
+/**
+ * Out of credits / billing exhausted. Distinct from a per-minute rate limit:
+ * retrying and waiting will never help, so don't burn attempts on it.
+ */
+function isOutOfCredits(error: unknown): boolean {
+  const msg = error instanceof Error ? error.message : String(error);
+  return /insufficient_quota|credit_balance_exhausted|no credits remaining|billing/i.test(msg);
+}
+
+/** Throttled — retrying after a wait can succeed. */
 function isRateLimited(error: unknown): boolean {
+  if (isOutOfCredits(error)) return false;
   const msg = error instanceof Error ? error.message : String(error);
   return /429|rate limit|RESOURCE_EXHAUSTED|quota/i.test(msg);
 }
@@ -351,7 +392,7 @@ export async function auditNutritionLabel(imageUrl: string): Promise<LabelAuditR
   loadCacheFromDisk();
 
   const cacheable = !imageUrl.startsWith('data:');
-  const cached = cacheable ? auditCache.get(imageUrl) : undefined;
+  const cached = cacheable ? auditCache.get(cacheKey(imageUrl)) : undefined;
   if (cached) return cached;
 
   // Retrying a rate-limited call spends the very quota it is waiting on: at 15
@@ -368,7 +409,7 @@ export async function auditNutritionLabel(imageUrl: string): Promise<LabelAuditR
     try {
       const result = await auditWithVisionModel(imageUrl);
       if (cacheable) {
-        auditCache.set(imageUrl, result);
+        auditCache.set(cacheKey(imageUrl), result);
         persistCacheToDisk();
       }
       return result;
@@ -388,10 +429,14 @@ export async function auditNutritionLabel(imageUrl: string): Promise<LabelAuditR
   const fallback = mockAuditNutritionLabel(imageUrl);
   return {
     ...fallback,
-    notes: isRateLimited(lastError)
-      ? 'Live vision call was rate-limited, so this reading is the deterministic mock. ' +
-        'The Gemini free tier allows 20 requests/minute — run `npm run warm-labels` once ' +
-        'to cache a real reading for every label.'
-      : `Live vision call failed (${reason}). Fell back to deterministic mock.`,
+    notes: isOutOfCredits(lastError)
+      ? `The ${visionModelId()} account has no credits left, so this reading is the ` +
+        'deterministic mock. Waiting will not help — add credits, or switch ' +
+        'VISION_BASE_URL/VISION_MODEL to a provider that has quota.'
+      : isRateLimited(lastError)
+        ? `Live vision call to ${visionModelId()} was rate-limited, so this reading is the ` +
+          'deterministic mock. Run `npm run warm-labels` once to cache a real reading ' +
+          'for every label, then `npm run save-label-cache` to commit them.'
+        : `Live vision call failed (${reason}). Fell back to deterministic mock.`,
   };
 }

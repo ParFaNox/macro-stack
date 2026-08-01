@@ -56,7 +56,24 @@ export default function ComparePage() {
               if (!cancelled) setReasoningLogs((prev) => [...prev, log]);
             },
             onResult: (result) => {
-              if (!cancelled) setAuditedProducts(result.recommendedProducts);
+              if (cancelled) return;
+              setAuditedProducts(result.recommendedProducts);
+
+              // Attribute the audit to the signed-in user so the profile shows
+              // real history. Ignored server-side when signed out.
+              void fetch("/api/profile", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  kind: "audit",
+                  ingredients: stackCart,
+                  budgetUSD: budget,
+                  retailUSD: result.totalOriginalPriceUSD,
+                  discountedUSD: result.totalDiscountedPriceUSD,
+                  savedUSD: result.totalSavingsUSD,
+                  productCount: result.recommendedProducts.length,
+                }),
+              }).catch(() => undefined);
             },
             onError: (message) => {
               if (!cancelled) setAuditError(message);
@@ -126,6 +143,25 @@ export default function ComparePage() {
       if (result?.success) {
         setOrderIds(result.orderId ?? null);
         setCheckoutComplete(true);
+
+        const ids = (result.orderId ?? "").split(",").map((x) => x.trim()).filter(Boolean);
+        void fetch("/api/profile", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            kind: "orders",
+            orders: auditedProducts.slice(0, ids.length).map((prod, i) => ({
+              orderId: ids[i] ?? `unknown_${i}`,
+              productName: prod.productName,
+              merchantName: card.merchantName,
+              chargedUSD: prod.discountedPriceUSD,
+              retailUSD: prod.totalPriceUSD,
+              savedUSD: Number((prod.totalPriceUSD - prod.discountedPriceUSD).toFixed(2)),
+              cardLast4: card.cardNumber.slice(-4),
+              environment: card.environment,
+            })),
+          }),
+        }).catch(() => undefined);
       } else {
         setCheckoutError(
           result ? "Checkout did not complete — see the log above." : "Checkout produced no result.",

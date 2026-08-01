@@ -112,9 +112,10 @@ export function attemptRenewal(orderId: string): {
   }
 
   const revoked = isCardRevoked(order.cardNumber);
+  // The UI already prefixes DECLINED/CHARGED, so don't repeat it here.
   const reason = revoked
-    ? `Declined — card ••••${order.cardLast4} is single-use and was retired after the original purchase.`
-    : `Charged $${order.totalChargedUSD.toFixed(2)} to ••••${order.cardLast4} for the next cycle.`;
+    ? `card ••••${order.cardLast4} is single-use and was retired after the original purchase.`
+    : `$${order.totalChargedUSD.toFixed(2)} to ••••${order.cardLast4} for the next cycle.`;
 
   order.renewals.push({ attemptedAt: new Date().toISOString(), success: !revoked, reason });
   return { success: !revoked, reason, order };

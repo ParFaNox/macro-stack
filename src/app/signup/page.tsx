@@ -1,11 +1,44 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { saveStack, DEFAULT_BUDGET_USD } from "@/lib/stack-store";
 import { FadeIn } from "@/components/fade-in";
 import { Sparkles } from "lucide-react";
 import { useState } from "react";
 
 export default function SignupPage() {
+  const router = useRouter();
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+
+    const fd = new FormData(e.currentTarget);
+    const res = await fetch("/api/auth/signup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: fd.get("email"), password: fd.get("password") }),
+    });
+    const body = await res.json();
+
+    if (!res.ok) {
+      setError(body.error ?? "Could not create account");
+      setBusy(false);
+      return;
+    }
+
+    // Carry the supplements they picked at signup into the stack builder, so
+    // the first audit is about what they actually take.
+    if (selected.length > 0) saveStack({ items: selected, budgetUSD: DEFAULT_BUDGET_USD });
+
+    router.push("/profile");
+    router.refresh();
+  }
+
   const [selected, setSelected] = useState<string[]>([]);
 
   const toggle = (item: string) => {
@@ -35,18 +68,24 @@ export default function SignupPage() {
             <p className="text-xs text-[#8f8f9e]">Stop overpaying for supplements today.</p>
           </div>
 
-          <form className="space-y-6">
+          <form className="space-y-6" onSubmit={onSubmit}>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1">
                 <label className="text-[11px] font-bold text-[#8f8f9e] uppercase tracking-wider">Full Name</label>
-                <input type="text" placeholder="John Doe"
+                <input type="text" name="fullName" placeholder="John Doe"
                   className="w-full px-4 py-3 rounded-xl bg-[#08080a] border border-[#22222c] text-white placeholder-[#646473] text-sm focus:outline-none focus:border-cyan-400 transition-colors" />
               </div>
               <div className="space-y-1">
                 <label className="text-[11px] font-bold text-[#8f8f9e] uppercase tracking-wider">Email</label>
-                <input type="email" placeholder="you@example.com"
+                <input type="email" name="email" required placeholder="you@example.com"
                   className="w-full px-4 py-3 rounded-xl bg-[#08080a] border border-[#22222c] text-white placeholder-[#646473] text-sm focus:outline-none focus:border-cyan-400 transition-colors" />
               </div>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[11px] font-bold text-[#8f8f9e] uppercase tracking-wider">Password</label>
+              <input type="password" name="password" required minLength={8} placeholder="At least 8 characters"
+                className="w-full px-4 py-3 rounded-xl bg-[#08080a] border border-[#22222c] text-white placeholder-[#646473] text-sm focus:outline-none focus:border-cyan-400 transition-colors" />
             </div>
 
             <div className="space-y-3">
@@ -68,10 +107,15 @@ export default function SignupPage() {
               </div>
             </div>
 
-            <Link href="/profile"
-              className="w-full block text-center py-3.5 rounded-xl bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-500 hover:from-cyan-300 hover:to-indigo-400 text-slate-950 font-black text-xs uppercase tracking-wider transition-all cursor-pointer shadow-lg shadow-cyan-500/20 hover:scale-105">
-              Create Account
-            </Link>
+            {error && (
+              <p className="text-[11px] text-rose-300 bg-rose-500/10 border border-rose-500/30 rounded-lg p-3">
+                {error}
+              </p>
+            )}
+            <button type="submit" disabled={busy}
+              className="w-full block text-center py-3.5 rounded-xl bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-500 hover:from-cyan-300 hover:to-indigo-400 text-slate-950 font-black text-xs uppercase tracking-wider transition-all cursor-pointer shadow-lg shadow-cyan-500/20 hover:scale-105 disabled:opacity-50">
+              {busy ? "Creating account…" : "Create Account"}
+            </button>
           </form>
 
           <div className="text-center text-xs text-[#8f8f9e]">

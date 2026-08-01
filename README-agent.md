@@ -1,9 +1,13 @@
-# MacroStack — Agent Layer (Teammate 2)
+# MacroStack — Agent, Trust & Payments
 
-GPT-4o Vision was swapped for **Google Gemini** because GPT-4o Vision is paid.
-Gemini exposes an **OpenAI-compatible** endpoint, so the `openai` SDK is reused
-unchanged — only `VISION_BASE_URL` and `VISION_MODEL` differ. Pointing those at
-Groq, OpenRouter or OpenAI proper needs no code change.
+An autonomous supplement buyer: it audits nutrition labels with a vision model,
+ranks products on true cost per active gram weighted by third-party trust, then
+**completes the purchase** with a single-use Prava card that dies before the
+subscription can renew.
+
+The vision provider is env-only (`VISION_BASE_URL` / `VISION_MODEL`). Defaults to
+OpenAI `gpt-4o`; Google Gemini is documented as a free alternative and is what
+the committed label cache was warmed on.
 
 ## Setup
 
@@ -11,8 +15,9 @@ Groq, OpenRouter or OpenAI proper needs no code change.
 cp .env.example .env.local && npm install && npm run dev
 ```
 
-**No API key is required.** With `VISION_API_KEY` blank the label auditor
-returns deterministic mock audits, so the app is fully runnable offline. Every
+**No API key is required for any of it.** With `VISION_API_KEY`, `SENSO_API_KEY`
+and `PRAVA_SECRET_KEY` all blank the app still runs end to end — label audits,
+trust scores and cards each fall back to a clearly-labelled offline mode. Every
 audit carries a `source` field (`LIVE_VISION_MODEL` | `DETERMINISTIC_MOCK`) that
 is echoed into the reasoning logs — a demo never silently passes mock output off
 as a real model call. For live audits, get a free key from
@@ -111,6 +116,78 @@ Now a small model pass converts Senso's answer into `{score, signals}`. It
 handles negation natively, runs once per brand, and is cached. `TRUST_MODEL` is
 separate from `VISION_MODEL` because providers meter quota per model — sharing
 one bucket made label audits and trust scoring starve each other.
+
+## Payments: Prava (the agent completes the transaction)
+
+The agent does not stop at a recommendation. It mints a single-use card capped
+at the exact approved total, drives the merchant's checkout in a real browser,
+and retires the credential so the subscription discount is captured but the
+recurring charge that normally follows it cannot land.
+
+```
+passkey challenge  → /api/prava/challenge   (bound to amount + merchant, single-use)
+mint               → /api/prava/mint-card   (verifies server-side, creates Prava session)
+user approves      → Prava's hosted surface (never bypassed — this is the guardrail)
+credential         → /api/prava/mint-card?sessionId=…
+checkout           → /api/checkout/execute?stream=1  (Playwright, SSE progress)
+settle             → Prava report-status APPROVED/DECLINED
+```
+
+Verified against the live sandbox: `POST /v1/sessions` returns 201, and
+`payment-result` correctly reports `pending` until a human approves. Reusing a
+passkey challenge returns 401.
+
+Verified end to end in simulated mode: 5 products, $180.20 charged, all orders
+placed, card retired, and the merchant's **next billing cycle declines**. A
+replayed checkout with the same credential returns 402.
+
+**Without `PRAVA_SECRET_KEY` everything still runs**, labelled `SIMULATED` in
+every log and API response. Nothing is ever presented as a real card that isn't.
+
+### The merchant is ours, on purpose
+
+`/mock-merchant` is a simulated storefront, labelled as such on every page. The
+catalog products are synthetic, so there is no real listing to buy — and a
+sandbox card would be declined at a real store anyway. This is the same shape as
+developing against Stripe test mode with your own checkout. Every Prava call
+around it is real, and going live is `PRAVA_ENVIRONMENT=production` plus a real
+merchant URL; the code path does not change.
+
+It also buys something a real merchant could not: `/mock-merchant/confirmation`
+has a **Simulate next billing cycle** button, so the auto-renewal shield is
+demonstrable rather than asserted.
+
+### Passkey guardrail
+
+Verification runs server-side in `/api/prava/mint-card`, before any Prava call.
+The challenge binds the amount and merchant and is single-use, so an approval
+for one basket cannot be replayed against another.
+
+Simulated mode does not stage fake ceremony — the server returns the signature
+and labels it as proving only that the caller saw a server-issued challenge,
+**not** that a human approved anything. `PASSKEY_MODE=webauthn` deliberately
+refuses to mint until a real credential registry is wired, because failing
+closed is the safe direction.
+
+## Accounts
+
+`/signup` and `/login` are real: scrypt-hashed passwords, signed HMAC session
+cookies, forged cookies rejected. `/profile` derives every figure from actual
+audit and order history — it previously showed hardcoded strings.
+
+The user store is in-memory and pinned to `globalThis`. Restart and accounts are
+gone; it will not work across instances. Swapping the three maps in
+`src/lib/auth/session.ts` for a database is the only change needed.
+
+## Deploying
+
+**Playwright does not run on Vercel serverless.** Use a container host — Fly.io,
+Railway, Render — or split the checkout runner into a worker. Everything else
+deploys anywhere.
+
+The label-audit and brand-trust caches ship as committed seeds, so a cold start
+is warm and costs no API quota. Re-run `warm-labels` / `warm-trust` and their
+`save-*-cache` counterparts after changing `VISION_MODEL`.
 
 ## Where products come from
 

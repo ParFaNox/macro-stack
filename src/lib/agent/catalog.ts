@@ -1,0 +1,321 @@
+import type { CatalogEntry } from '@/types/agent';
+
+/**
+ * Seed supplement catalog.
+ *
+ * Stands in for a live vendor feed. Every derived number (cost per active gram,
+ * discounted price) is computed by the optimizer from these raw fields rather
+ * than stored here, so the catalog cannot drift out of sync with the math.
+ *
+ * Deliberately includes three proprietary-blend products (`prop_*`) that look
+ * competitive on sticker price but are mostly filler. They exist so the
+ * optimizer visibly rejects something during a demo — an optimizer that picks
+ * everything proves nothing.
+ *
+ * Label images live under /public/labels. Swap this array for a live feed and
+ * nothing downstream changes.
+ */
+export const SUPPLEMENT_CATALOG: CatalogEntry[] = [
+  // --- Creatine Monohydrate -------------------------------------------------
+  {
+    id: 'creatine_bulk_500',
+    brand: 'BulkNutrition',
+    productName: 'Creatine Monohydrate Micronized (500g)',
+    imageUrl: '/products/creatine-bulk.jpg',
+    labelImageUrl: '/labels/creatine-bulk.jpg',
+    totalPriceUSD: 24.99,
+    servingsPerContainer: 100,
+    activeIngredients: [
+      { name: 'Creatine Monohydrate', amountPerServingGrams: 5.0, purityPercentage: 99.9 },
+    ],
+    subscribeAndSaveDiscountPct: 15,
+    checkoutUrl: 'https://example-merchant.test/p/creatine_bulk_500',
+    vendorName: 'iHerb Direct',
+    ingredientFamily: 'Creatine',
+  },
+  {
+    id: 'creatine_peakform_300',
+    brand: 'PeakForm',
+    productName: 'Creatine Monohydrate (300g)',
+    imageUrl: '/products/creatine-peakform.jpg',
+    labelImageUrl: '/labels/creatine-peakform.jpg',
+    totalPriceUSD: 29.99,
+    servingsPerContainer: 60,
+    activeIngredients: [
+      { name: 'Creatine Monohydrate', amountPerServingGrams: 5.0, purityPercentage: 99.5 },
+    ],
+    subscribeAndSaveDiscountPct: 10,
+    checkoutUrl: 'https://example-merchant.test/p/creatine_peakform_300',
+    vendorName: 'Amazon',
+    ingredientFamily: 'Creatine',
+  },
+  {
+    id: 'prop_creasurge_matrix',
+    brand: 'ApexLabs',
+    productName: 'CreaSurge Matrix™ (30 servings)',
+    imageUrl: '/products/creasurge.jpg',
+    labelImageUrl: '/labels/creasurge.jpg',
+    totalPriceUSD: 44.99,
+    servingsPerContainer: 30,
+    activeIngredients: [
+      { name: 'Creatine Monohydrate', amountPerServingGrams: 1.5, purityPercentage: 65 },
+    ],
+    subscribeAndSaveDiscountPct: 5,
+    checkoutUrl: 'https://example-merchant.test/p/prop_creasurge_matrix',
+    vendorName: 'Bodybuilding.com',
+    ingredientFamily: 'Creatine',
+    fillerCallouts: [
+      'Proprietary blend hides per-ingredient dosing',
+      'Creatine listed 4th in a 7-ingredient blend',
+      'Maltodextrin is the leading blend component',
+    ],
+  },
+
+  // --- L-Citrulline ---------------------------------------------------------
+  {
+    id: 'citrulline_bulk_300',
+    brand: 'BulkNutrition',
+    productName: 'L-Citrulline Malate 2:1 (300g)',
+    imageUrl: '/products/citrulline-bulk.jpg',
+    labelImageUrl: '/labels/citrulline-bulk.jpg',
+    totalPriceUSD: 27.99,
+    servingsPerContainer: 50,
+    activeIngredients: [
+      { name: 'L-Citrulline Malate', amountPerServingGrams: 6.0, purityPercentage: 98.0 },
+    ],
+    subscribeAndSaveDiscountPct: 15,
+    checkoutUrl: 'https://example-merchant.test/p/citrulline_bulk_300',
+    vendorName: 'iHerb Direct',
+    ingredientFamily: 'L-Citrulline',
+  },
+  {
+    id: 'citrulline_peakform_200',
+    brand: 'PeakForm',
+    productName: 'L-Citrulline Malate (200g)',
+    imageUrl: '/products/citrulline-peakform.jpg',
+    labelImageUrl: '/labels/citrulline-peakform.jpg',
+    totalPriceUSD: 24.99,
+    servingsPerContainer: 40,
+    activeIngredients: [
+      { name: 'L-Citrulline Malate', amountPerServingGrams: 5.0, purityPercentage: 97.5 },
+    ],
+    subscribeAndSaveDiscountPct: 12,
+    checkoutUrl: 'https://example-merchant.test/p/citrulline_peakform_200',
+    vendorName: 'Vendor Direct',
+    ingredientFamily: 'L-Citrulline',
+  },
+  {
+    id: 'prop_pumpblend',
+    brand: 'VitalRoot',
+    productName: 'Pump Blend Complex (25 servings)',
+    imageUrl: '/products/pumpblend.jpg',
+    labelImageUrl: '/labels/pumpblend.jpg',
+    totalPriceUSD: 34.99,
+    servingsPerContainer: 25,
+    activeIngredients: [
+      { name: 'L-Citrulline Malate', amountPerServingGrams: 3.0, purityPercentage: 70 },
+    ],
+    subscribeAndSaveDiscountPct: 8,
+    checkoutUrl: 'https://example-merchant.test/p/prop_pumpblend',
+    vendorName: 'Amazon',
+    ingredientFamily: 'L-Citrulline',
+    fillerCallouts: [
+      'Proprietary "Pump Matrix" — no per-ingredient amounts disclosed',
+      'Citrulline dose below the 6g clinical threshold',
+    ],
+  },
+
+  // --- Whey Protein ---------------------------------------------------------
+  {
+    id: 'whey_cleanwhey_2lb',
+    brand: 'CleanWhey',
+    productName: 'Whey Protein Isolate (2lb)',
+    imageUrl: '/products/whey-cleanwhey.jpg',
+    labelImageUrl: '/labels/whey-cleanwhey.jpg',
+    totalPriceUSD: 49.99,
+    servingsPerContainer: 30,
+    activeIngredients: [
+      { name: 'Whey Protein Isolate', amountPerServingGrams: 25.0, purityPercentage: 90.0 },
+    ],
+    subscribeAndSaveDiscountPct: 20,
+    checkoutUrl: 'https://example-merchant.test/p/whey_cleanwhey_2lb',
+    vendorName: 'Amazon',
+    ingredientFamily: 'Whey Protein',
+  },
+  {
+    id: 'whey_massline_2lb',
+    brand: 'MassLine',
+    productName: 'Whey Protein Concentrate (2lb)',
+    imageUrl: '/products/whey-massline.jpg',
+    labelImageUrl: '/labels/whey-massline.jpg',
+    totalPriceUSD: 34.99,
+    servingsPerContainer: 28,
+    activeIngredients: [
+      { name: 'Whey Protein Concentrate', amountPerServingGrams: 22.0, purityPercentage: 78.0 },
+    ],
+    subscribeAndSaveDiscountPct: 15,
+    checkoutUrl: 'https://example-merchant.test/p/whey_massline_2lb',
+    vendorName: 'Bodybuilding.com',
+    ingredientFamily: 'Whey Protein',
+    fillerCallouts: ['Amino spiking: glycine and taurine boost nitrogen-based protein claims'],
+  },
+  {
+    id: 'whey_peakform_5lb',
+    brand: 'PeakForm',
+    productName: 'Grass-Fed Whey Isolate (5lb)',
+    imageUrl: '/products/whey-peakform.jpg',
+    labelImageUrl: '/labels/whey-peakform.jpg',
+    totalPriceUSD: 109.99,
+    servingsPerContainer: 76,
+    activeIngredients: [
+      { name: 'Whey Protein Isolate', amountPerServingGrams: 25.0, purityPercentage: 91.0 },
+    ],
+    subscribeAndSaveDiscountPct: 18,
+    checkoutUrl: 'https://example-merchant.test/p/whey_peakform_5lb',
+    vendorName: 'Vendor Direct',
+    ingredientFamily: 'Whey Protein',
+  },
+
+  // --- Beta-Alanine ---------------------------------------------------------
+  {
+    id: 'betaalanine_bulk_200',
+    brand: 'BulkNutrition',
+    productName: 'Beta-Alanine (200g)',
+    imageUrl: '/products/beta-bulk.jpg',
+    labelImageUrl: '/labels/beta-bulk.jpg',
+    totalPriceUSD: 19.99,
+    servingsPerContainer: 62,
+    activeIngredients: [
+      { name: 'Beta-Alanine', amountPerServingGrams: 3.2, purityPercentage: 99.0 },
+    ],
+    subscribeAndSaveDiscountPct: 15,
+    checkoutUrl: 'https://example-merchant.test/p/betaalanine_bulk_200',
+    vendorName: 'iHerb Direct',
+    ingredientFamily: 'Beta-Alanine',
+  },
+  {
+    id: 'betaalanine_peakform_100',
+    brand: 'PeakForm',
+    productName: 'Beta-Alanine (100g)',
+    imageUrl: '/products/beta-peakform.jpg',
+    labelImageUrl: '/labels/beta-peakform.jpg',
+    totalPriceUSD: 14.99,
+    servingsPerContainer: 31,
+    activeIngredients: [
+      { name: 'Beta-Alanine', amountPerServingGrams: 3.2, purityPercentage: 98.5 },
+    ],
+    subscribeAndSaveDiscountPct: 10,
+    checkoutUrl: 'https://example-merchant.test/p/betaalanine_peakform_100',
+    vendorName: 'Amazon',
+    ingredientFamily: 'Beta-Alanine',
+  },
+  {
+    id: 'prop_endurance_matrix',
+    brand: 'ApexLabs',
+    productName: 'Endurance Matrix™ (30 servings)',
+    imageUrl: '/products/endurance-matrix.jpg',
+    labelImageUrl: '/labels/endurance-matrix.jpg',
+    totalPriceUSD: 39.99,
+    servingsPerContainer: 30,
+    activeIngredients: [
+      { name: 'Beta-Alanine', amountPerServingGrams: 1.6, purityPercentage: 55 },
+    ],
+    subscribeAndSaveDiscountPct: 5,
+    checkoutUrl: 'https://example-merchant.test/p/prop_endurance_matrix',
+    vendorName: 'Bodybuilding.com',
+    ingredientFamily: 'Beta-Alanine',
+    fillerCallouts: [
+      'Proprietary blend — beta-alanine amount not individually disclosed',
+      'Half the 3.2g dose used in clinical studies',
+      'Rice flour listed before the active ingredient',
+    ],
+  },
+
+  // --- Electrolytes ---------------------------------------------------------
+  {
+    id: 'electrolytes_hydrasalt_30',
+    brand: 'HydraSalt',
+    productName: 'Electrolytes Complex (30 servings)',
+    imageUrl: '/products/electrolytes-hydrasalt.jpg',
+    labelImageUrl: '/labels/electrolytes-hydrasalt.jpg',
+    totalPriceUSD: 24.99,
+    servingsPerContainer: 30,
+    activeIngredients: [
+      { name: 'Sodium Chloride', amountPerServingGrams: 2.0, purityPercentage: 97.0 },
+      { name: 'Potassium Citrate', amountPerServingGrams: 1.0, purityPercentage: 95.0 },
+      { name: 'Magnesium Malate', amountPerServingGrams: 0.5, purityPercentage: 94.0 },
+    ],
+    subscribeAndSaveDiscountPct: 15,
+    checkoutUrl: 'https://example-merchant.test/p/electrolytes_hydrasalt_30',
+    vendorName: 'iHerb Direct',
+    ingredientFamily: 'Electrolytes',
+  },
+  {
+    id: 'electrolytes_vitalroot_60',
+    brand: 'VitalRoot',
+    productName: 'Daily Electrolytes (60 servings)',
+    imageUrl: '/products/electrolytes-vitalroot.jpg',
+    labelImageUrl: '/labels/electrolytes-vitalroot.jpg',
+    totalPriceUSD: 34.99,
+    servingsPerContainer: 60,
+    activeIngredients: [
+      { name: 'Sodium Chloride', amountPerServingGrams: 1.8, purityPercentage: 96.0 },
+      { name: 'Potassium Citrate', amountPerServingGrams: 0.8, purityPercentage: 94.0 },
+      { name: 'Magnesium Malate', amountPerServingGrams: 0.4, purityPercentage: 93.0 },
+    ],
+    subscribeAndSaveDiscountPct: 20,
+    checkoutUrl: 'https://example-merchant.test/p/electrolytes_vitalroot_60',
+    vendorName: 'Vendor Direct',
+    ingredientFamily: 'Electrolytes',
+  },
+  {
+    id: 'electrolytes_peakform_20',
+    brand: 'PeakForm',
+    productName: 'Hydration Sticks (20 servings)',
+    imageUrl: '/products/electrolytes-peakform.jpg',
+    labelImageUrl: '/labels/electrolytes-peakform.jpg',
+    totalPriceUSD: 21.99,
+    servingsPerContainer: 20,
+    activeIngredients: [
+      { name: 'Sodium Chloride', amountPerServingGrams: 1.5, purityPercentage: 95.0 },
+      { name: 'Potassium Citrate', amountPerServingGrams: 0.9, purityPercentage: 92.0 },
+      { name: 'Magnesium Malate', amountPerServingGrams: 0.4, purityPercentage: 91.0 },
+    ],
+    subscribeAndSaveDiscountPct: 10,
+    checkoutUrl: 'https://example-merchant.test/p/electrolytes_peakform_20',
+    vendorName: 'Amazon',
+    ingredientFamily: 'Electrolytes',
+    fillerCallouts: ['Added cane sugar exceeds total electrolyte content per stick'],
+  },
+];
+
+/** Every distinct ingredient family in the catalog. */
+export const INGREDIENT_FAMILIES: string[] = [
+  ...new Set(SUPPLEMENT_CATALOG.map((e) => e.ingredientFamily)),
+];
+
+export function findCatalogEntryByLabelUrl(labelImageUrl: string): CatalogEntry | undefined {
+  return SUPPLEMENT_CATALOG.find((e) => e.labelImageUrl === labelImageUrl);
+}
+
+export function findCatalogEntryById(id: string): CatalogEntry | undefined {
+  return SUPPLEMENT_CATALOG.find((e) => e.id === id);
+}
+
+/**
+ * Matches a user's free-text target ("Creatine Monohydrate (500g)", "creatine")
+ * against a catalog ingredient family. Teammate 1's stack builder lets users
+ * type arbitrary strings, so this has to be forgiving in both directions.
+ */
+export function matchIngredientFamily(query: string): string | undefined {
+  const q = query.toLowerCase().replace(/\(.*?\)/g, '').trim();
+  if (!q) return undefined;
+
+  const exact = INGREDIENT_FAMILIES.find((f) => f.toLowerCase() === q);
+  if (exact) return exact;
+
+  return INGREDIENT_FAMILIES.find((f) => {
+    const fam = f.toLowerCase();
+    return q.includes(fam) || fam.includes(q);
+  });
+}

@@ -1,0 +1,140 @@
+# MacroStack — Agent Layer (Teammate 2)
+
+GPT-4o Vision was swapped for **Google Gemini** because GPT-4o Vision is paid.
+Gemini exposes an **OpenAI-compatible** endpoint, so the `openai` SDK is reused
+unchanged — only `VISION_BASE_URL` and `VISION_MODEL` differ. Pointing those at
+Groq, OpenRouter or OpenAI proper needs no code change.
+
+## Setup
+
+```bash
+cp .env.example .env.local && npm install && npm run dev
+```
+
+**No API key is required.** With `VISION_API_KEY` blank the label auditor
+returns deterministic mock audits, so the app is fully runnable offline. Every
+audit carries a `source` field (`LIVE_VISION_MODEL` | `DETERMINISTIC_MOCK`) that
+is echoed into the reasoning logs — a demo never silently passes mock output off
+as a real model call. For live audits, get a free key from
+[Google AI Studio](https://aistudio.google.com/apikey) and set `VISION_API_KEY`.
+
+> A Google AI Pro consumer subscription does **not** grant Gemini API quota. The
+> AI Studio key has its own separate free tier.
+
+## Endpoints
+
+### `POST /api/optimize` → `StackOptimizationResult`
+
+```bash
+curl -s -X POST localhost:3000/api/optimize \
+  -H 'content-type: application/json' \
+  -d '{"targetBudgetUSD":80,"targetIngredients":["Creatine","L-Citrulline"]}'
+```
+
+Add `?stream=1` for Server-Sent Events: one `log` event per reasoning step as it
+happens, then a terminal `result` event.
+
+> **Demo tip:** offline mock audits do no I/O, so the optimizer finishes in
+> under a millisecond and all ~18 logs arrive in the same frame — the reasoning
+> feed pops instead of animating. Set `AGENT_LOG_DELAY_MS=150` in `.env.local`
+> to pace the stream. Leave it at `0` once a real vision key is configured,
+> since each label audit is then already a network round-trip.
+
+```bash
+curl -N -X POST 'localhost:3000/api/optimize?stream=1' \
+  -H 'content-type: application/json' \
+  -d '{"targetBudgetUSD":120,"targetIngredients":["Creatine","Whey Protein","Beta-Alanine"]}'
+```
+
+`GET /api/optimize` returns the list of optimizable ingredient families.
+
+### `POST /api/audit-label` → `{ audit, reasoningLogs }`
+
+```bash
+curl -s -X POST localhost:3000/api/audit-label \
+  -H 'content-type: application/json' \
+  -d '{"imageUrl":"/labels/creatine-bulk.jpg"}'
+```
+
+Also accepts `multipart/form-data` with an `image` file field (10MB cap).
+
+### `GET|POST /api/mcp` — Model Context Protocol server
+
+Three tools: `audit_supplement_label`, `evaluate_ingredient_purity`,
+`calculate_true_cost`. Stateless Streamable HTTP transport, mounted in-app.
+
+```bash
+npx @modelcontextprotocol/inspector
+```
+
+…then connect to `http://localhost:3000/api/mcp`.
+
+## Frontend integration (Teammate 1)
+
+Replace the `setTimeout` mock in `src/app/compare/page.tsx` with one call from
+`src/lib/agent/client.ts`. The return types are the same shared interfaces your
+components already render, so nothing else changes:
+
+```ts
+import { streamOptimizeStack } from '@/lib/agent/client';
+
+await streamOptimizeStack(
+  { targetBudgetUSD: 150, targetIngredients: stackCart },
+  {
+    onLog: (log) => setReasoningLogs((prev) => [...prev, log]),
+    onResult: (result) => {
+      setAuditedProducts(result.recommendedProducts);
+      setIsAuditing(false);
+    },
+  },
+);
+```
+
+`optimizeStack()` is the non-streaming equivalent if you'd rather not animate.
+
+## The cost-per-gram formula
+
+The task doc specifies:
+
+```
+totalPriceUSD / (servingsPerContainer * sumOfActiveGrams * purityPercentage)
+```
+
+`purityPercentage` is stored 0–100 (e.g. `99.5`), so using it raw makes the
+result ~100× too small. The implementation divides purity by 100:
+
+```
+totalPriceUSD / (servingsPerContainer * SUM(amountPerServingGrams * purityPercentage/100))
+```
+
+This number is rendered in the UI, so the units matter.
+
+## Layout
+
+| File | Purpose |
+| --- | --- |
+| `src/lib/agent/catalog.ts` | Seed product catalog (swap for a live feed) |
+| `src/lib/agent/vision-auditor.ts` | Gemini vision audit + deterministic mock fallback |
+| `src/lib/agent/optimizer-engine.ts` | Cost-per-active-gram math + stack selection |
+| `src/lib/agent/logger.ts` | `AgentReasoningLog` factory + SSE collector |
+| `src/lib/agent/mcp-tools.ts` | Tool schemas/handlers, shared by MCP and HTTP |
+| `src/lib/agent/client.ts` | Typed browser client for Teammate 1 |
+| `src/lib/mcp/server.ts` | MCP server wiring |
+| `src/types/agent.ts` | Agent-only types (shared `src/types/index.ts` untouched) |
+
+## Selection algorithm
+
+Coverage-first greedy fill. Each requested ingredient family is ranked by true
+cost per active gram; families are then visited best-value-first and the best
+product that fits the remaining budget is taken, stepping down to cheaper
+options when the top pick doesn't fit.
+
+A true knapsack would squeeze out marginally more value, but the candidate set
+is tiny and this ordering is *explainable* — every pick carries a one-line
+reason and the list of what it beat, which is what the reasoning feed shows.
+Covering more requested ingredients also beats shaving a dollar off a stack that
+skips one entirely.
+
+The catalog deliberately contains three proprietary-blend products (`prop_*`)
+that look competitive on sticker price but are mostly filler, so the optimizer
+visibly rejects something during a demo.

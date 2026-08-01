@@ -1,10 +1,15 @@
 import type { Metadata } from "next";
-import { Plus_Jakarta_Sans, JetBrains_Mono } from "next/font/google";
+import { Playfair_Display, Nunito, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 
-const jakarta = Plus_Jakarta_Sans({
+const playfair = Playfair_Display({
   subsets: ["latin"],
-  variable: "--font-jakarta",
+  variable: "--font-serif",
+});
+
+const nunito = Nunito({
+  subsets: ["latin"],
+  variable: "--font-sans",
 });
 
 const jetbrains = JetBrains_Mono({
@@ -23,7 +28,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${jakarta.variable} ${jetbrains.variable}`}>
+    <html lang="en" className={`${playfair.variable} ${nunito.variable} ${jetbrains.variable}`}>
       <body className="font-sans antialiased bg-[#08080a] text-[#f0f0f5]">
         {children}
       </body>

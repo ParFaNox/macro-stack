@@ -155,7 +155,6 @@ export default function Dashboard() {
 
   const originalTotal = auditedProducts.reduce((acc, p) => acc + p.totalPriceUSD, 0);
   const auditedTotal = auditedProducts.reduce((acc, p) => acc + p.discountedPriceUSD, 0);
-  const netSavings = originalTotal - auditedTotal;
 
   const faqs = [
     {
@@ -173,52 +172,52 @@ export default function Dashboard() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#08080a] text-[#f0f0f5] font-sans antialiased selection:bg-cyan-400 selection:text-slate-950">
+    <div className="min-h-screen bg-[#08080a] text-[#f0f0f5] font-sans antialiased selection:bg-cyan-400 selection:text-slate-950 flex flex-col items-center">
       <Navbar />
 
-      <main className="max-w-6xl mx-auto px-6 py-16 space-y-20">
-        {/* HERO SECTION */}
-        <section className="text-center space-y-5 max-w-4xl mx-auto pt-4">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-gradient-to-r from-cyan-500/10 via-blue-500/10 to-indigo-500/10 border border-cyan-400/30 text-cyan-300 text-xs font-semibold tracking-wide">
+      <main className="w-full max-w-6xl px-6 py-16 space-y-16 flex flex-col items-center">
+        {/* PERFECTLY CENTERED HERO SECTION */}
+        <section className="w-full flex flex-col items-center text-center space-y-6 max-w-4xl mx-auto pt-4">
+          <div className="inline-flex items-center justify-center gap-2 px-4 py-1.5 rounded-full bg-gradient-to-r from-cyan-500/10 via-blue-500/10 to-indigo-500/10 border border-cyan-400/30 text-cyan-300 text-xs font-bold tracking-wide">
             <Zap className="w-3.5 h-3.5 fill-cyan-400 text-cyan-400" /> Autonomous Multi-Item Stack Audit Engine
           </div>
 
-          <h1 className="text-5xl sm:text-7xl md:text-8xl font-black tracking-tight text-white leading-none font-sans">
+          <h1 className="w-full text-5xl sm:text-7xl md:text-8xl font-serif italic tracking-tight text-white leading-none text-center">
             Stop overpaying <br />
-            <span className="bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-500 bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-500 bg-clip-text text-transparent not-italic font-sans font-black">
               for supplements.
             </span>
           </h1>
 
-          <p className="text-[#8f8f9e] text-base sm:text-xl font-normal max-w-xl mx-auto leading-relaxed pt-2">
+          <p className="text-[#8f8f9e] text-base sm:text-xl font-normal max-w-xl mx-auto text-center leading-relaxed pt-2">
             Audit nutrition labels across stores, calculate true cost-per-gram, and checkout with single-use Prava Virtual Cards.
           </p>
         </section>
 
-        {/* SUBTLE 3-STEP PIPELINE BAR (NEW ADDITION) */}
-        <section className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-5xl mx-auto">
-          <div className="p-4 rounded-2xl bg-[#121217] border border-[#22222c] space-y-1">
-            <div className="flex items-center gap-2 text-cyan-400 font-semibold text-xs">
+        {/* SUBTLE 3-STEP PIPELINE BAR */}
+        <section className="w-full grid grid-cols-1 md:grid-cols-3 gap-4 max-w-5xl mx-auto">
+          <div className="p-4 rounded-2xl bg-[#121217] border border-[#22222c] space-y-1 text-center flex flex-col items-center">
+            <div className="flex items-center justify-center gap-2 text-cyan-400 font-bold text-xs">
               <Layers className="w-4 h-4" /> 1. Build Stack Cart
             </div>
-            <p className="text-[11px] text-[#8f8f9e]">Add 4–5 supplements to audit all at once</p>
+            <p className="text-[11px] text-[#8f8f9e] text-center">Add 4–5 supplements to audit all at once</p>
           </div>
-          <div className="p-4 rounded-2xl bg-[#121217] border border-[#22222c] space-y-1">
-            <div className="flex items-center gap-2 text-blue-400 font-semibold text-xs">
+          <div className="p-4 rounded-2xl bg-[#121217] border border-[#22222c] space-y-1 text-center flex flex-col items-center">
+            <div className="flex items-center justify-center gap-2 text-blue-400 font-bold text-xs">
               <Award className="w-4 h-4" /> 2. True Cost Audit
             </div>
-            <p className="text-[11px] text-[#8f8f9e]">GPT-4o Vision scans active cost per gram</p>
+            <p className="text-[11px] text-[#8f8f9e] text-center">GPT-4o Vision scans active cost per gram</p>
           </div>
-          <div className="p-4 rounded-2xl bg-[#121217] border border-[#22222c] space-y-1">
-            <div className="flex items-center gap-2 text-indigo-400 font-semibold text-xs">
+          <div className="p-4 rounded-2xl bg-[#121217] border border-[#22222c] space-y-1 text-center flex flex-col items-center">
+            <div className="flex items-center justify-center gap-2 text-indigo-400 font-bold text-xs">
               <Shield className="w-4 h-4" /> 3. Prava One-Click Card
             </div>
-            <p className="text-[11px] text-[#8f8f9e]">Single-use card expires post-checkout</p>
+            <p className="text-[11px] text-[#8f8f9e] text-center">Single-use card expires post-checkout</p>
           </div>
         </section>
 
         {/* BENTO GRID: STACK BUILDER CART & LIVE TERMINAL */}
-        <div id="stack-builder" className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        <div id="stack-builder" className="w-full grid grid-cols-1 lg:grid-cols-12 gap-8">
           {/* STACK BUILDER CART (5 COLS) */}
           <div className="lg:col-span-5 space-y-6">
             <div className="rounded-3xl bg-[#121217] border border-[#22222c] p-7 space-y-6 shadow-2xl relative overflow-hidden">
@@ -227,7 +226,7 @@ export default function Dashboard() {
                   <h2 className="text-lg font-bold text-white tracking-tight">Stack Builder</h2>
                   <p className="text-xs text-[#8f8f9e]">Add items to audit entire stack across merchants</p>
                 </div>
-                <span className="text-xs text-cyan-300 font-mono font-semibold bg-gradient-to-r from-cyan-500/10 to-blue-500/10 px-3 py-1 rounded-full border border-cyan-400/30">
+                <span className="text-xs text-cyan-300 font-mono font-bold bg-gradient-to-r from-cyan-500/10 to-blue-500/10 px-3 py-1 rounded-full border border-cyan-400/30">
                   {stackCart.length} Items
                 </span>
               </div>
@@ -280,7 +279,7 @@ export default function Dashboard() {
                 ))}
               </div>
 
-              {/* MAIN AUDIT BUTTON */}
+              {/* BLUE GRADIENT MAIN AUDIT BUTTON */}
               <button
                 onClick={handleAuditEntireStack}
                 disabled={isAuditing || stackCart.length === 0}
@@ -307,7 +306,7 @@ export default function Dashboard() {
 
         {/* RESULTS & PRAVA CHECKOUT */}
         {auditedProducts.length > 0 && (
-          <section className="space-y-6 pt-4">
+          <section className="w-full space-y-6 pt-4">
             <div className="rounded-3xl bg-[#121217] border border-[#22222c] p-8 space-y-6 shadow-2xl">
               <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-[#22222c] pb-6">
                 <div>
@@ -364,9 +363,9 @@ export default function Dashboard() {
           </section>
         )}
 
-        {/* ACCORDION FAQ SECTION (NEW ADDITION) */}
-        <section className="max-w-3xl mx-auto space-y-4 pt-4">
-          <div className="flex items-center gap-2 text-xs font-bold text-[#8f8f9e] uppercase tracking-wider">
+        {/* ACCORDION FAQ SECTION */}
+        <section className="w-full max-w-3xl mx-auto space-y-4 pt-4">
+          <div className="flex items-center justify-center gap-2 text-xs font-bold text-[#8f8f9e] uppercase tracking-wider text-center">
             <Info className="w-4 h-4 text-cyan-400" /> Frequently Asked Questions
           </div>
 

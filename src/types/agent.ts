@@ -49,9 +49,13 @@ export interface RankedCandidate {
   matchedIngredient: string;
   /** Total grams of active ingredient in the whole container. */
   totalActiveGrams: number;
-  /** USD per gram of pure active ingredient — the core ranking metric. */
+  /** USD per gram of pure active ingredient — the honest price metric. */
   costPerGramActiveUSD: number;
+  /** costPerGramActiveUSD after the brand's trust score is folded in. This is
+   *  what the optimizer actually sorts on. */
+  effectiveCostPerGramUSD: number;
   audit: LabelAuditResult;
+  trust: BrandTrust;
 }
 
 /**
@@ -95,4 +99,33 @@ export interface CatalogEntry {
      *  no individual amounts. */
     components: string[];
   };
+}
+
+// --- Brand trust signal (Senso) ---------------------------------------------
+
+/** Where a trust verdict came from. `UNVERIFIED_*` values all carry a neutral
+ *  score — the pipeline never invents a trust number it cannot source. */
+export type TrustSource =
+  | 'SENSO_VERIFIED'
+  | 'UNVERIFIED_NO_KEY'
+  | 'UNVERIFIED_NO_RECORD'
+  | 'UNVERIFIED_ERROR';
+
+export interface TrustCitation {
+  title: string;
+  excerpt: string;
+  url?: string;
+}
+
+export interface BrandTrust {
+  brand: string;
+  /** 0-1. Exactly 0.5 whenever `source` is unverified. */
+  score: number;
+  /** Verbatim from Senso when verified — this is what the user reads. */
+  verdict: string;
+  /** Parsed positive/negative markers, for compact UI display. */
+  signals: string[];
+  citations: TrustCitation[];
+  source: TrustSource;
+  notes?: string;
 }

@@ -1,0 +1,194 @@
+{
+  "BulkNutrition": {
+    "brand": "BulkNutrition",
+    "score": 0.95,
+    "verdict": "Yes — based on the provided record, **BulkNutrition appears trustworthy**.\n\n### Report\n- **NSF Certified for Sport:** **Active** — every lot tested.\n- **Informed Sport:** **Enrolled** — batch testing published per lot.\n- **FDA enforcement history:** **No warning letters, no recalls on record.**\n- **Label accuracy:** **Independent assay results match the declared amounts within 2%.**\n- **Proprietary blends:** **None** — all ingredient amounts are individually disclosed.\n\n### Bottom line\nThese are all **strong trust signals** in the provided context, especially the combination of NSF Certified for Sport, Informed Sport, independent label verification, and full ingredient disclosure.",
+    "signals": [
+      "+ NSF Certified for Sport",
+      "+ Informed Sport enrolled",
+      "+ Clean FDA enforcement history",
+      "+ Label accuracy within 2%",
+      "+ Full ingredient disclosure without proprietary blends"
+    ],
+    "citations": [
+      {
+        "title": "BulkNutrition — third-party verification record",
+        "excerpt": "NOTE: MacroStack demonstration corpus.\n\nBrand: BulkNutrition\nThird-party certification: NSF Certified for Sport — active, every lot tested.\nInformed Sport: enrolled, batch testing published per lot.\nManufacturing: cGMP-c"
+      },
+      {
+        "title": "CleanWhey — third-party verification record",
+        "excerpt": "NOTE: MacroStack demonstration corpus.\n\nBrand: CleanWhey\nThird-party certification: NSF Certified for Sport — active.\nInformed Sport: enrolled.\nManufacturing: cGMP-compliant facility.\nFDA enforcement history: clean.\nLabe"
+      },
+      {
+        "title": "Supplement trust signals — how to read third-party verification",
+        "excerpt": "NOTE: MacroStack demonstration corpus.\n\nHow to judge a supplement brand's trustworthiness:\n\nSTRONG SIGNALS\n- NSF Certified for Sport: every lot screened against a banned-substance list.\n  The strictest widely recognised "
+      }
+    ],
+    "source": "SENSO_VERIFIED"
+  },
+  "PeakForm": {
+    "brand": "PeakForm",
+    "score": 0.84,
+    "verdict": "PeakForm appears **reasonably trustworthy** based on the available record.\n\n### Third-party certifications\n- **NSF Certified for Sport:** **Not enrolled**\n- **Informed Sport:** **Active, batch tested**\n\n### FDA enforcement history\n- **No warning letters**\n- **No recalls on record**\n\n### Label accuracy\n- Independent assay results **match declared amounts within 4%**\n\n### Proprietary blends\n- **None in single-ingredient powders**\n\n### Overall\nThe record describes PeakForm as **good**, with **batch testing and clean labeling**, but **not NSF certified**.",
+    "signals": [
+      "+ Informed Sport active batch tested",
+      "+ No FDA warning letters",
+      "+ No FDA recalls on record",
+      "+ Label accuracy within 4%",
+      "+ No proprietary blends",
+      "− Not NSF certified"
+    ],
+    "citations": [
+      {
+        "title": "PeakForm — third-party verification record",
+        "excerpt": "NOTE: MacroStack demonstration corpus.\n\nBrand: PeakForm\nThird-party certification: Informed Sport — active, batch tested.\nNSF Certified for Sport: not enrolled.\nManufacturing: cGMP-compliant facility.\nFDA enforcement his"
+      },
+      {
+        "title": "BulkNutrition — third-party verification record",
+        "excerpt": "NOTE: MacroStack demonstration corpus.\n\nBrand: BulkNutrition\nThird-party certification: NSF Certified for Sport — active, every lot tested.\nInformed Sport: enrolled, batch testing published per lot.\nManufacturing: cGMP-c"
+      },
+      {
+        "title": "Supplement trust signals — how to read third-party verification",
+        "excerpt": "NOTE: MacroStack demonstration corpus.\n\nHow to judge a supplement brand's trustworthiness:\n\nSTRONG SIGNALS\n- NSF Certified for Sport: every lot screened against a banned-substance list.\n  The strictest widely recognised "
+      }
+    ],
+    "source": "SENSO_VERIFIED"
+  },
+  "ApexLabs": {
+    "brand": "ApexLabs",
+    "score": 0.15,
+    "verdict": "ApexLabs does **not** look especially trustworthy based on the provided record.\n\n- **NSF Certified for Sport:** none\n- **Informed Sport:** none\n- **FDA enforcement history:** **concern** — there is a warning letter on record citing **unsubstantiated structure/function claims** and **inadequate batch records**\n- **Label accuracy:** **concern** — proprietary blends hide per-ingredient dosing, and where independently assayed, the active ingredient was **well below the clinically studied dose**\n- **Proprietary blends:** **yes**\n\nOverall, the available information points to several warning signals rather than strong trust signals.",
+    "signals": [
+      "− Not NSF Certified for Sport",
+      "− Not Informed Sport",
+      "− FDA warning letter on record",
+      "− Unsubstantiated structure/function claims",
+      "− Inadequate batch records",
+      "− Proprietary blends hiding per-ingredient dosing"
+    ],
+    "citations": [
+      {
+        "title": "ApexLabs — third-party verification record",
+        "excerpt": "NOTE: MacroStack demonstration corpus.\n\nBrand: ApexLabs\nThird-party certification: none.\nManufacturing: contract manufacturer, no published audit.\nFDA enforcement history: CONCERN — warning letter on record citing unsubs"
+      },
+      {
+        "title": "Supplement trust signals — how to read third-party verification",
+        "excerpt": "NOTE: MacroStack demonstration corpus.\n\nHow to judge a supplement brand's trustworthiness:\n\nSTRONG SIGNALS\n- NSF Certified for Sport: every lot screened against a banned-substance list.\n  The strictest widely recognised "
+      },
+      {
+        "title": "PeakForm — third-party verification record",
+        "excerpt": "NOTE: MacroStack demonstration corpus.\n\nBrand: PeakForm\nThird-party certification: Informed Sport — active, batch tested.\nNSF Certified for Sport: not enrolled.\nManufacturing: cGMP-compliant facility.\nFDA enforcement his"
+      }
+    ],
+    "source": "SENSO_VERIFIED"
+  },
+  "VitalRoot": {
+    "brand": "VitalRoot",
+    "score": 0.52,
+    "verdict": "Based on the provided record, **VitalRoot does not show strong trust signals**.\n\n- **NSF Certified for Sport:** none\n- **Informed Sport:** not listed\n- **FDA enforcement history:** **no formal action**\n- **Label accuracy:** **mixed**\n  - Single-ingredient products are accurately labelled.\n  - Blend products conceal per-ingredient dosing, and the disclosed blend total suggests the headline ingredient is below its clinically studied dose.\n- **Proprietary blends:** **yes**, in the **“Pump Matrix”** line\n\nOverall, the available information suggests **mixed trustworthiness** rather than a strong verification profile.",
+    "signals": [
+      "− No NSF or Informed Sport certification",
+      "+ Clean FDA enforcement history",
+      "+ Single-ingredient products accurately labelled",
+      "− Proprietary blends conceal per-ingredient dosing",
+      "− Headline ingredients below clinically studied dose"
+    ],
+    "citations": [
+      {
+        "title": "VitalRoot — third-party verification record",
+        "excerpt": "NOTE: MacroStack demonstration corpus.\n\nBrand: VitalRoot\nThird-party certification: none.\nManufacturing: cGMP-compliant facility.\nFDA enforcement history: no formal action.\nLabel accuracy: MIXED. Single-ingredient produc"
+      },
+      {
+        "title": "BulkNutrition — third-party verification record",
+        "excerpt": "NOTE: MacroStack demonstration corpus.\n\nBrand: BulkNutrition\nThird-party certification: NSF Certified for Sport — active, every lot tested.\nInformed Sport: enrolled, batch testing published per lot.\nManufacturing: cGMP-c"
+      },
+      {
+        "title": "Supplement trust signals — how to read third-party verification",
+        "excerpt": "NOTE: MacroStack demonstration corpus.\n\nHow to judge a supplement brand's trustworthiness:\n\nSTRONG SIGNALS\n- NSF Certified for Sport: every lot screened against a banned-substance list.\n  The strictest widely recognised "
+      }
+    ],
+    "source": "SENSO_VERIFIED"
+  },
+  "CleanWhey": {
+    "brand": "CleanWhey",
+    "score": 0.95,
+    "verdict": "CleanWhey appears to be a **strongly trustworthy** supplement brand based on the provided record.\n\n- **NSF Certified for Sport:** **Active**\n- **Informed Sport:** **Enrolled**\n- **FDA enforcement history:** **Clean**\n- **Label accuracy:** Protein content verified by **nitrogen and amino acid profiling**; **no evidence of protein spiking**\n- **Proprietary blends:** **None**\n\nThe record also notes that CleanWhey’s assessment is **“Strong”**, with protein claims verified by **amino acid profiling rather than nitrogen content alone**.",
+    "signals": [
+      "+ NSF Certified for Sport",
+      "+ Informed Sport enrolled",
+      "+ Clean FDA enforcement history",
+      "+ Protein content verified by amino acid profiling",
+      "+ No evidence of protein spiking",
+      "+ No proprietary blends"
+    ],
+    "citations": [
+      {
+        "title": "CleanWhey — third-party verification record",
+        "excerpt": "NOTE: MacroStack demonstration corpus.\n\nBrand: CleanWhey\nThird-party certification: NSF Certified for Sport — active.\nInformed Sport: enrolled.\nManufacturing: cGMP-compliant facility.\nFDA enforcement history: clean.\nLabe"
+      },
+      {
+        "title": "BulkNutrition — third-party verification record",
+        "excerpt": "NOTE: MacroStack demonstration corpus.\n\nBrand: BulkNutrition\nThird-party certification: NSF Certified for Sport — active, every lot tested.\nInformed Sport: enrolled, batch testing published per lot.\nManufacturing: cGMP-c"
+      },
+      {
+        "title": "Supplement trust signals — how to read third-party verification",
+        "excerpt": "NOTE: MacroStack demonstration corpus.\n\nHow to judge a supplement brand's trustworthiness:\n\nSTRONG SIGNALS\n- NSF Certified for Sport: every lot screened against a banned-substance list.\n  The strictest widely recognised "
+      }
+    ],
+    "source": "SENSO_VERIFIED"
+  },
+  "MassLine": {
+    "brand": "MassLine",
+    "score": 0.35,
+    "verdict": "Based on the provided record, **MassLine does not appear to have strong trust signals**.\n\n- **NSF Certified for Sport:** **No**\n- **Informed Sport:** **No** / not enrolled\n- **FDA enforcement history:** **No formal action**\n- **Label accuracy:** **CONCERN** — independent amino acid profiling indicates added glycine and taurine inflate nitrogen-derived protein figures, so the effective complete protein is materially below the declared amount.\n- **Proprietary blends:** **Not stated in the provided record**\n\nOverall, MassLine is **not strongly verified** by third-party sport certifications, and the label accuracy issue is a negative sign.",
+    "signals": [
+      "− Not NSF Certified for Sport",
+      "− Not enrolled in Informed Sport",
+      "+ No formal FDA enforcement history",
+      "− Amino acid profiling indicates protein inflation",
+      "− Label amounts do not match effective complete protein"
+    ],
+    "citations": [
+      {
+        "title": "MassLine — third-party verification record",
+        "excerpt": "NOTE: MacroStack demonstration corpus.\n\nBrand: MassLine\nThird-party certification: none. Not NSF certified, not Informed Sport enrolled.\nManufacturing: cGMP-compliant facility.\nFDA enforcement history: no formal action.\n"
+      },
+      {
+        "title": "BulkNutrition — third-party verification record",
+        "excerpt": "NOTE: MacroStack demonstration corpus.\n\nBrand: BulkNutrition\nThird-party certification: NSF Certified for Sport — active, every lot tested.\nInformed Sport: enrolled, batch testing published per lot.\nManufacturing: cGMP-c"
+      },
+      {
+        "title": "PeakForm — third-party verification record",
+        "excerpt": "NOTE: MacroStack demonstration corpus.\n\nBrand: PeakForm\nThird-party certification: Informed Sport — active, batch tested.\nNSF Certified for Sport: not enrolled.\nManufacturing: cGMP-compliant facility.\nFDA enforcement his"
+      }
+    ],
+    "source": "SENSO_VERIFIED"
+  },
+  "HydraSalt": {
+    "brand": "HydraSalt",
+    "score": 0.88,
+    "verdict": "Yes — based on the provided record, **HydraSalt appears trustworthy**.\n\n### Reported trust signals\n- **NSF Certified for Sport:** *Not mentioned in the HydraSalt record.*\n- **Informed Sport:** **Active**\n- **FDA enforcement history:** **Clean**\n- **Label accuracy:** Electrolyte content independently verified; declared amounts **confirmed within 3%**\n- **Proprietary blends:** **None** — each mineral salt is disclosed separately\n\n### Overall assessment\nThe record labels HydraSalt as **“Strong”** because it has:\n- third-party testing via **Informed Sport**,\n- independent label verification,\n- **full mineral-by-mineral disclosure**, and\n- **no proprietary blends**.\n\nIf you want, I can also compare HydraSalt’s trust signals against the other brands in the context.",
+    "signals": [
+      "+ Informed Sport active certification",
+      "+ Clean FDA enforcement history",
+      "+ Label accuracy confirmed within 3%",
+      "+ No proprietary blends",
+      "+ Full mineral-by-mineral disclosure"
+    ],
+    "citations": [
+      {
+        "title": "HydraSalt — third-party verification record",
+        "excerpt": "NOTE: MacroStack demonstration corpus.\n\nBrand: HydraSalt\nThird-party certification: Informed Sport — active.\nManufacturing: cGMP-compliant facility.\nFDA enforcement history: clean.\nLabel accuracy: electrolyte content ind"
+      },
+      {
+        "title": "Supplement trust signals — how to read third-party verification",
+        "excerpt": "NOTE: MacroStack demonstration corpus.\n\nHow to judge a supplement brand's trustworthiness:\n\nSTRONG SIGNALS\n- NSF Certified for Sport: every lot screened against a banned-substance list.\n  The strictest widely recognised "
+      },
+      {
+        "title": "BulkNutrition — third-party verification record",
+        "excerpt": "NOTE: MacroStack demonstration corpus.\n\nBrand: BulkNutrition\nThird-party certification: NSF Certified for Sport — active, every lot tested.\nInformed Sport: enrolled, batch testing published per lot.\nManufacturing: cGMP-c"
+      }
+    ],
+    "source": "SENSO_VERIFIED"
+  }
+}

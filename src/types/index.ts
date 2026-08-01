@@ -27,8 +27,19 @@ export interface StackOptimizationRequest {
   preferredBrands?: string[];
 }
 
+export interface BrandTrustSummary {
+  score: number;
+  grade: 'A' | 'B' | 'C' | 'D' | 'F';
+  verdict: string;
+  signals: string[];
+  citations: string[];
+}
+
 export interface StackOptimizationResult {
   recommendedProducts: SupplementProduct[];
+  /** Brand -> third-party trust verdict, keyed by SupplementProduct.brand.
+   *  Absent when no trust signal was available. */
+  brandTrust?: Record<string, BrandTrustSummary>;
   totalOriginalPriceUSD: number;
   totalDiscountedPriceUSD: number;
   totalSavingsUSD: number;
@@ -37,7 +48,7 @@ export interface StackOptimizationResult {
 }
 
 // --- 2. AGENT REASONING LOG SCHEMA ---
-export type AgentLogStep = 'LABEL_AUDIT' | 'COST_CALCULATION' | 'STACK_OPTIMIZATION' | 'CARD_MINTING' | 'CHECKOUT_AUTOMATION';
+export type AgentLogStep = 'LABEL_AUDIT' | 'TRUST_VERIFICATION' | 'COST_CALCULATION' | 'STACK_OPTIMIZATION' | 'CARD_MINTING' | 'CHECKOUT_AUTOMATION';
 export type AgentLogStatus = 'INFO' | 'SUCCESS' | 'WARNING' | 'ERROR';
 
 export interface AgentReasoningLog {

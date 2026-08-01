@@ -69,6 +69,49 @@ npx @modelcontextprotocol/inspector
 
 …then connect to `http://localhost:3000/api/mcp`.
 
+## Brand trust (Senso)
+
+Cost per active gram alone can recommend a brand that is cheap *because* it cuts
+corners. `src/lib/agent/trust-signal.ts` asks a second question — can this brand
+be trusted? — against a Senso knowledge base of third-party verification
+records, and folds the answer into the ranking.
+
+```bash
+npm run ingest-trust                          # seed the knowledge base (once)
+npm run warm-trust && npm run save-trust-cache # cache verdicts, commit the seed
+```
+
+Ranking sorts on **trust-adjusted** cost per gram. A neutral score (0.5) leaves
+the number untouched, so with no Senso key the app ranks exactly as before —
+trust can only reorder things when there is real evidence behind it. The penalty
+is capped at 2x so a bad grade demotes a product without making it unpickable,
+and the raw price is always shown alongside.
+
+Worth being precise about what is real: **Senso genuinely retrieves and
+synthesises**, and the verdict shown to the user is its words. The *corpus* is
+seeded — our catalog brands are fictional, so no real NSF or FDA record exists
+for them (see `trust-corpus.ts`, which says so on every document). Point
+`ingest-trust` at real NSF Certified for Sport listings, Informed Sport's batch
+database and FDA warning letters and nothing downstream changes.
+
+`GET /api/trust` reports cache status; `GET /api/trust?brand=X` returns one verdict.
+
+### Two scoring approaches that failed
+
+Recorded so nobody reintroduces them:
+
+1. **Keyword-matching Senso's answer.** `"not NSF certified"` contains
+   `"NSF certified"`, so absence of a certification scored as a positive.
+   MassLine — no certification, amino spiking — came out grade B.
+2. **Regex over the retrieved record.** Senso chunks documents, so a single
+   chunk rarely holds every field, and `"no warning letters"` still matches
+   `/warning letter/`.
+
+Now a small model pass converts Senso's answer into `{score, signals}`. It
+handles negation natively, runs once per brand, and is cached. `TRUST_MODEL` is
+separate from `VISION_MODEL` because providers meter quota per model — sharing
+one bucket made label audits and trust scoring starve each other.
+
 ## Where products come from
 
 `src/lib/agent/product-search.ts` is the single seam between "what products

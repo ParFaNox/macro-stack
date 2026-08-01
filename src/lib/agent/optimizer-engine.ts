@@ -10,6 +10,25 @@ import { matchIngredientFamily } from './catalog';
 import { searchProducts } from './product-search';
 import { ReasoningLogCollector } from './logger';
 import { auditNutritionLabel, hasVisionKey } from './vision-auditor';
+import { getBrandTrust, hasSensoKey, trustGrade } from './trust-signal';
+
+/**
+ * Folds a brand's trust score into its cost per active gram.
+ *
+ * A verified brand's price is taken at face value; an untrustworthy one is
+ * penalised, because a label you cannot trust makes its own cost-per-gram
+ * unreliable. Neutral (0.5) leaves the number unchanged, so a run with no Senso
+ * key ranks exactly as it did before — trust can only ever reorder things when
+ * there is real evidence behind it.
+ *
+ * Penalty is capped at 2x so a bad grade demotes a product without making it
+ * mathematically unpickable; the reasoning feed still shows the raw price.
+ */
+export function trustAdjustedCost(costPerGramUSD: number, trustScore: number): number {
+  if (!Number.isFinite(costPerGramUSD)) return costPerGramUSD;
+  const penalty = 1 + Math.max(0, 0.5 - trustScore) * 2;
+  return Number((costPerGramUSD * penalty).toFixed(4));
+}
 
 /**
  * Cost-per-active-gram engine and stack selector.
@@ -109,7 +128,10 @@ async function rankFamily(
 ): Promise<RankedCandidate[]> {
   const candidates = await Promise.all(
     entries.map(async (entry) => {
-      const audit = await auditNutritionLabel(entry.labelImageUrl);
+      const [audit, trust] = await Promise.all([
+        auditNutritionLabel(entry.labelImageUrl),
+        getBrandTrust(entry.brand),
+      ]);
       const product = toSupplementProduct(entry, audit);
 
       // A live audit that quietly degraded to the mock (rate limit, bad image)
@@ -137,6 +159,32 @@ async function rankFamily(
         },
       );
 
+      if (trust.source !== 'SENSO_VERIFIED' && hasSensoKey()) {
+        // Same rule as a degraded label audit: a trust lookup that fell back
+        // must say so, or the feed implies a brand was checked when it wasn't.
+        logs.push(
+          'TRUST_VERIFICATION',
+          'WARNING',
+          `${entry.brand} — no verified trust record, ranking on price alone`,
+          { reason: trust.notes ?? trust.source },
+        );
+      }
+
+      if (trust.source === 'SENSO_VERIFIED') {
+        logs.push(
+          'TRUST_VERIFICATION',
+          trust.score >= 0.7 ? 'SUCCESS' : trust.score >= 0.5 ? 'INFO' : 'WARNING',
+          `${entry.brand} — trust grade ${trustGrade(trust.score)} from verified sources`,
+          {
+            score: trust.score,
+            ...(trust.signals.length ? { signals: trust.signals } : {}),
+            verdict: trust.verdict.slice(0, 300),
+            citations: trust.citations.map((c) => c.title),
+            source: 'Senso knowledge base',
+          },
+        );
+      }
+
       const candidate: RankedCandidate = {
         product,
         matchedIngredient: family,
@@ -144,13 +192,17 @@ async function rankFamily(
           totalActiveGrams(product.activeIngredients, product.servingsPerContainer).toFixed(2),
         ),
         costPerGramActiveUSD: product.costPerGramActiveUSD,
+        effectiveCostPerGramUSD: trustAdjustedCost(product.costPerGramActiveUSD, trust.score),
         audit,
+        trust,
       };
       return candidate;
     }),
   );
 
-  candidates.sort((a, b) => a.costPerGramActiveUSD - b.costPerGramActiveUSD);
+  // Rank on trust-adjusted cost, not raw price. A brand that is cheap because it
+  // is cutting corners should not win on the strength of the corner-cutting.
+  candidates.sort((a, b) => a.effectiveCostPerGramUSD - b.effectiveCostPerGramUSD);
 
   logs.push(
     'COST_CALCULATION',
@@ -191,6 +243,15 @@ export async function optimizeStack(
 ): Promise<StackOptimizationResult> {
   const logs = collector ?? new ReasoningLogCollector();
   const { targetBudgetUSD, targetIngredients, preferredBrands } = request;
+
+  logs.push(
+    'TRUST_VERIFICATION',
+    hasSensoKey() ? 'INFO' : 'WARNING',
+    hasSensoKey()
+      ? 'Brand trust will be verified against third-party sources via Senso'
+      : 'No Senso key — brands rank on price alone, with a neutral trust score',
+    { trustSignal: hasSensoKey() ? 'Senso knowledge base' : 'disabled' },
+  );
 
   logs.push(
     'LABEL_AUDIT',
@@ -359,6 +420,12 @@ export async function optimizeStack(
         product: pick.product.productName,
         vendor: pick.product.vendorName,
         costPerActiveGram: `$${pick.costPerGramActiveUSD.toFixed(4)}`,
+        ...(pick.trust.source === 'SENSO_VERIFIED'
+          ? {
+              trustGrade: trustGrade(pick.trust.score),
+              trustAdjustedCostPerGram: `$${pick.effectiveCostPerGramUSD.toFixed(4)}`,
+            }
+          : {}),
         subscribeAndSave: `${pick.product.subscribeAndSaveDiscountPct}% off → $${pick.product.discountedPriceUSD.toFixed(2)}`,
         totalActiveGrams: pick.totalActiveGrams,
         ...(pickIsFlagged ? { labelFlags: pick.audit.fillerCallouts } : {}),
@@ -413,8 +480,21 @@ export async function optimizeStack(
     },
   );
 
+  const brandTrust: Record<string, import('@/types').BrandTrustSummary> = {};
+  for (const c of selected) {
+    if (c.trust.source !== 'SENSO_VERIFIED') continue;
+    brandTrust[c.product.brand] = {
+      score: c.trust.score,
+      grade: trustGrade(c.trust.score),
+      verdict: c.trust.verdict,
+      signals: c.trust.signals,
+      citations: c.trust.citations.map((x) => x.title),
+    };
+  }
+
   return {
     recommendedProducts,
+    ...(Object.keys(brandTrust).length ? { brandTrust } : {}),
     totalOriginalPriceUSD,
     totalDiscountedPriceUSD,
     totalSavingsUSD,

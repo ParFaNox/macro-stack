@@ -403,7 +403,31 @@ KYB — not more code from you.
 
 ---
 
-## 8. Rules of the road
+## 8. Stretch: Linq iMessage agent (do this last)
+
+There is a $6,000 Linq track ($5,000 credits + $1,000 cash) for building an
+agent inside iMessage. MacroStack maps onto it reasonably: text your stack, get
+the audit back, approve the purchase from your phone.
+
+**Deliberately ranked last.** It relocates the product onto a second surface
+rather than deepening it, and it adds nothing to the two things judges actually
+score — "agent takes meaningful action" and "handles payments clearly". Both of
+those live in the Prava work above. Do not start this until §5 is done.
+
+If you do pick it up:
+
+- Linq is an API for iMessage/RCS/SMS with group chats, reactions, and payments.
+- The server work is already done — `/api/optimize` returns everything you need.
+  A Linq webhook would parse an inbound message into `targetIngredients`, call
+  the endpoint, and format `reasoningLogs` + `recommendedProducts` as a reply.
+- Checkout approval still needs the passkey step, so the message would carry a
+  link out to the Prava payment session rather than completing in-thread.
+- Owner: this is a front-end/integration surface, not agent-layer work. Agree
+  who owns it before starting.
+
+---
+
+## 9. Rules of the road
 
 - **Don't edit** `src/lib/agent/**`, `src/app/api/{optimize,audit-label,mcp,labels}/**`,
   or `src/app/labels/**` without telling Teammate 2 — that's the agent layer.

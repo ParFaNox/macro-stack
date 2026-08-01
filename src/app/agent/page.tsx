@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 
 import { AgentReasoningFeed } from "@/components/agent-reasoning-feed";
 import { streamOptimizeStack } from "@/lib/agent/client";
-import type { AgentReasoningLog, SupplementProduct } from "@/types";
+import type { AgentReasoningLog, BrandTrustSummary, SupplementProduct } from "@/types";
 
 /**
  * Live agent console (Teammate 2).
@@ -24,6 +24,7 @@ export default function AgentConsolePage() {
 
   const [logs, setLogs] = useState<AgentReasoningLog[]>([]);
   const [products, setProducts] = useState<SupplementProduct[]>([]);
+  const [brandTrust, setBrandTrust] = useState<Record<string, BrandTrustSummary>>({});
   const [summary, setSummary] = useState<{
     original: number;
     discounted: number;
@@ -62,6 +63,7 @@ export default function AgentConsolePage() {
     setError(null);
     setLogs([]);
     setProducts([]);
+    setBrandTrust({});
     setSummary(null);
 
     try {
@@ -71,6 +73,7 @@ export default function AgentConsolePage() {
           onLog: (log) => setLogs((prev) => [...prev, log]),
           onResult: (result) => {
             setProducts(result.recommendedProducts);
+            setBrandTrust(result.brandTrust ?? {});
             setSummary({
               original: result.totalOriginalPriceUSD,
               discounted: result.totalDiscountedPriceUSD,
@@ -219,6 +222,20 @@ export default function AgentConsolePage() {
                       <span className="px-2 py-0.5 rounded bg-[#121217] border border-[#22222c] text-cyan-300">
                         ${p.costPerGramActiveUSD.toFixed(4)}/g active
                       </span>
+                      {brandTrust[p.brand] && (
+                        <span
+                          title={brandTrust[p.brand].verdict}
+                          className={`px-2 py-0.5 rounded border ${
+                            brandTrust[p.brand].grade <= "B"
+                              ? "bg-emerald-500/10 border-emerald-400/30 text-emerald-300"
+                              : brandTrust[p.brand].grade === "C"
+                                ? "bg-amber-500/10 border-amber-400/30 text-amber-300"
+                                : "bg-rose-500/10 border-rose-400/30 text-rose-300"
+                          }`}
+                        >
+                          trust {brandTrust[p.brand].grade}
+                        </span>
+                      )}
                       <span className="px-2 py-0.5 rounded bg-[#121217] border border-[#22222c] text-[#8f8f9e]">
                         {p.subscribeAndSaveDiscountPct}% S&amp;S
                       </span>

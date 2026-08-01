@@ -8,7 +8,10 @@
     "start": "next start",
     "lint": "eslint",
     "warm-labels": "node scripts/warm-labels.mjs",
-    "save-label-cache": "node scripts/save-label-cache.mjs"
+    "save-label-cache": "node scripts/save-label-cache.mjs",
+    "ingest-trust": "node scripts/ingest-trust.mjs",
+    "save-trust-cache": "node scripts/save-trust-cache.mjs",
+    "warm-trust": "node scripts/warm-trust.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.30.0",

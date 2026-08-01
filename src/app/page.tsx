@@ -14,8 +14,12 @@ import {
   Plus,
   Trash2,
   ShieldCheck,
-  TrendingDown,
-  Zap
+  Zap,
+  ChevronDown,
+  Info,
+  Layers,
+  Award,
+  Shield
 } from "lucide-react";
 
 export default function Dashboard() {
@@ -28,6 +32,7 @@ export default function Dashboard() {
     "Electrolytes Complex (30 servings)",
   ]);
 
+  const [activeFaq, setActiveFaq] = useState<number | null>(null);
   const [isAuditing, setIsAuditing] = useState(false);
   const [isCheckoutExecuting, setIsCheckoutExecuting] = useState(false);
   const [reasoningLogs, setReasoningLogs] = useState<AgentReasoningLog[]>([]);
@@ -152,13 +157,28 @@ export default function Dashboard() {
   const auditedTotal = auditedProducts.reduce((acc, p) => acc + p.discountedPriceUSD, 0);
   const netSavings = originalTotal - auditedTotal;
 
+  const faqs = [
+    {
+      q: "How does MacroStack AI find the cheapest price?",
+      a: "Our AI agent audits nutrition labels across stores (Amazon, iHerb, Vendor Direct), calculates true cost per active gram (ignoring deceptive filler scoops), and selects the lowest price deals."
+    },
+    {
+      q: "What does Prava Virtual Card do during checkout?",
+      a: "The agent selects Subscribe & Save (unlocking 15-20% discounts). Prava issues a single-use card hard-capped to the exact total ($135.95) that expires immediately post-checkout, blocking future monthly auto-renewal charges."
+    },
+    {
+      q: "Are there any hidden fees or markups?",
+      a: "Zero. MacroStack AI is 100% independent. You pay the exact merchant price."
+    }
+  ];
+
   return (
     <div className="min-h-screen bg-[#08080a] text-[#f0f0f5] font-sans antialiased selection:bg-cyan-400 selection:text-slate-950">
       <Navbar />
 
-      <main className="max-w-6xl mx-auto px-6 py-16 space-y-16">
-        {/* MODERN BLUE GRADIENT HERO */}
-        <section className="text-center space-y-5 max-w-4xl mx-auto pt-6">
+      <main className="max-w-6xl mx-auto px-6 py-16 space-y-20">
+        {/* HERO SECTION */}
+        <section className="text-center space-y-5 max-w-4xl mx-auto pt-4">
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-gradient-to-r from-cyan-500/10 via-blue-500/10 to-indigo-500/10 border border-cyan-400/30 text-cyan-300 text-xs font-semibold tracking-wide">
             <Zap className="w-3.5 h-3.5 fill-cyan-400 text-cyan-400" /> Autonomous Multi-Item Stack Audit Engine
           </div>
@@ -173,6 +193,28 @@ export default function Dashboard() {
           <p className="text-[#8f8f9e] text-base sm:text-xl font-normal max-w-xl mx-auto leading-relaxed pt-2">
             Audit nutrition labels across stores, calculate true cost-per-gram, and checkout with single-use Prava Virtual Cards.
           </p>
+        </section>
+
+        {/* SUBTLE 3-STEP PIPELINE BAR (NEW ADDITION) */}
+        <section className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-5xl mx-auto">
+          <div className="p-4 rounded-2xl bg-[#121217] border border-[#22222c] space-y-1">
+            <div className="flex items-center gap-2 text-cyan-400 font-semibold text-xs">
+              <Layers className="w-4 h-4" /> 1. Build Stack Cart
+            </div>
+            <p className="text-[11px] text-[#8f8f9e]">Add 4–5 supplements to audit all at once</p>
+          </div>
+          <div className="p-4 rounded-2xl bg-[#121217] border border-[#22222c] space-y-1">
+            <div className="flex items-center gap-2 text-blue-400 font-semibold text-xs">
+              <Award className="w-4 h-4" /> 2. True Cost Audit
+            </div>
+            <p className="text-[11px] text-[#8f8f9e]">GPT-4o Vision scans active cost per gram</p>
+          </div>
+          <div className="p-4 rounded-2xl bg-[#121217] border border-[#22222c] space-y-1">
+            <div className="flex items-center gap-2 text-indigo-400 font-semibold text-xs">
+              <Shield className="w-4 h-4" /> 3. Prava One-Click Card
+            </div>
+            <p className="text-[11px] text-[#8f8f9e]">Single-use card expires post-checkout</p>
+          </div>
         </section>
 
         {/* BENTO GRID: STACK BUILDER CART & LIVE TERMINAL */}
@@ -238,7 +280,7 @@ export default function Dashboard() {
                 ))}
               </div>
 
-              {/* BLUE GRADIENT MAIN AUDIT BUTTON */}
+              {/* MAIN AUDIT BUTTON */}
               <button
                 onClick={handleAuditEntireStack}
                 disabled={isAuditing || stackCart.length === 0}
@@ -321,6 +363,35 @@ export default function Dashboard() {
             </div>
           </section>
         )}
+
+        {/* ACCORDION FAQ SECTION (NEW ADDITION) */}
+        <section className="max-w-3xl mx-auto space-y-4 pt-4">
+          <div className="flex items-center gap-2 text-xs font-bold text-[#8f8f9e] uppercase tracking-wider">
+            <Info className="w-4 h-4 text-cyan-400" /> Frequently Asked Questions
+          </div>
+
+          <div className="space-y-3">
+            {faqs.map((faq, idx) => {
+              const isOpen = activeFaq === idx;
+              return (
+                <div key={idx} className="rounded-2xl bg-[#121217] border border-[#22222c] overflow-hidden">
+                  <button
+                    onClick={() => setActiveFaq(isOpen ? null : idx)}
+                    className="w-full p-4 text-left flex justify-between items-center text-xs font-bold text-white hover:text-cyan-300 transition-colors cursor-pointer"
+                  >
+                    <span>{faq.q}</span>
+                    <ChevronDown className={`w-4 h-4 text-[#8f8f9e] transition-transform ${isOpen ? "rotate-180 text-cyan-400" : ""}`} />
+                  </button>
+                  {isOpen && (
+                    <div className="px-4 pb-4 text-xs text-[#8f8f9e] leading-relaxed border-t border-[#1e1e28] pt-3">
+                      {faq.a}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </section>
       </main>
 
       <PasskeyModal

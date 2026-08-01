@@ -15,8 +15,7 @@ import {
   Trash2,
   ShieldCheck,
   TrendingDown,
-  Zap,
-  Check
+  Zap
 } from "lucide-react";
 
 export default function Dashboard() {
@@ -154,19 +153,19 @@ export default function Dashboard() {
   const netSavings = originalTotal - auditedTotal;
 
   return (
-    <div className="min-h-screen bg-[#08080a] text-[#f0f0f5] font-sans antialiased selection:bg-emerald-400 selection:text-slate-950">
+    <div className="min-h-screen bg-[#08080a] text-[#f0f0f5] font-sans antialiased selection:bg-cyan-400 selection:text-slate-950">
       <Navbar />
 
       <main className="max-w-6xl mx-auto px-6 py-16 space-y-16">
-        {/* MODERN HIGH-IMPACT HERO */}
+        {/* MODERN BLUE GRADIENT HERO */}
         <section className="text-center space-y-5 max-w-4xl mx-auto pt-6">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold tracking-wide">
-            <Zap className="w-3.5 h-3.5 fill-emerald-400" /> Autonomous Multi-Item Stack Audit Engine
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-gradient-to-r from-cyan-500/10 via-blue-500/10 to-indigo-500/10 border border-cyan-400/30 text-cyan-300 text-xs font-semibold tracking-wide">
+            <Zap className="w-3.5 h-3.5 fill-cyan-400 text-cyan-400" /> Autonomous Multi-Item Stack Audit Engine
           </div>
 
           <h1 className="text-5xl sm:text-7xl md:text-8xl font-black tracking-tight text-white leading-none font-sans">
             Stop overpaying <br />
-            <span className="bg-gradient-to-r from-white via-[#8f8f9e] to-[#555566] bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-500 bg-clip-text text-transparent">
               for supplements.
             </span>
           </h1>
@@ -186,7 +185,7 @@ export default function Dashboard() {
                   <h2 className="text-lg font-bold text-white tracking-tight">Stack Builder</h2>
                   <p className="text-xs text-[#8f8f9e]">Add items to audit entire stack across merchants</p>
                 </div>
-                <span className="text-xs text-emerald-400 font-mono font-semibold bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20">
+                <span className="text-xs text-cyan-300 font-mono font-semibold bg-gradient-to-r from-cyan-500/10 to-blue-500/10 px-3 py-1 rounded-full border border-cyan-400/30">
                   {stackCart.length} Items
                 </span>
               </div>
@@ -206,7 +205,7 @@ export default function Dashboard() {
                     placeholder="Search & add custom supplement..."
                     value={searchInput}
                     onChange={(e) => setSearchInput(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-[#08080a] border border-[#22222c] text-white placeholder-[#646473] text-xs focus:outline-none focus:border-emerald-400 transition-colors font-medium"
+                    className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-[#08080a] border border-[#22222c] text-white placeholder-[#646473] text-xs focus:outline-none focus:border-cyan-400 transition-colors font-medium"
                   />
                 </div>
                 <button
@@ -222,10 +221,10 @@ export default function Dashboard() {
                 {stackCart.map((item, idx) => (
                   <div
                     key={idx}
-                    className="flex items-center justify-between p-3.5 rounded-xl bg-[#08080a] border border-[#1e1e28] hover:border-emerald-500/40 transition-colors group"
+                    className="flex items-center justify-between p-3.5 rounded-xl bg-[#08080a] border border-[#1e1e28] hover:border-cyan-500/40 transition-colors group"
                   >
                     <div className="flex items-center gap-3">
-                      <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-sm shadow-emerald-400"></span>
+                      <span className="h-2 w-2 rounded-full bg-cyan-400 shadow-sm shadow-cyan-400"></span>
                       <span className="text-xs font-semibold text-white">{item}</span>
                     </div>
                     <button
@@ -239,11 +238,11 @@ export default function Dashboard() {
                 ))}
               </div>
 
-              {/* AUDIT MAIN BUTTON */}
+              {/* BLUE GRADIENT MAIN AUDIT BUTTON */}
               <button
                 onClick={handleAuditEntireStack}
                 disabled={isAuditing || stackCart.length === 0}
-                className="w-full py-4 rounded-xl bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-extrabold text-xs uppercase tracking-wider transition-all disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2 shadow-lg shadow-emerald-400/20 hover:scale-[1.02]"
+                className="w-full py-4 rounded-xl bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-500 hover:from-cyan-300 hover:to-indigo-400 text-slate-950 font-black text-xs uppercase tracking-wider transition-all disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2 shadow-xl shadow-cyan-500/25 hover:scale-[1.02]"
               >
                 {isAuditing ? (
                   <>
@@ -275,20 +274,20 @@ export default function Dashboard() {
                 </div>
                 <div className="text-right">
                   <span className="text-xs text-[#8f8f9e] block font-medium">Total Audited Stack Price</span>
-                  <span className="text-3xl font-mono font-bold text-emerald-400">${auditedTotal.toFixed(2)}</span>
+                  <span className="text-3xl font-mono font-bold text-cyan-400">${auditedTotal.toFixed(2)}</span>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {auditedProducts.map((prod) => (
                   <div key={prod.id} className="p-4 rounded-2xl bg-[#08080a] border border-[#1e1e28] space-y-2">
-                    <span className="text-[10px] font-bold text-emerald-400 px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20">
+                    <span className="text-[10px] font-bold text-cyan-300 px-2 py-0.5 rounded bg-cyan-500/10 border border-cyan-400/30">
                       {prod.vendorName}
                     </span>
                     <h4 className="text-sm font-bold text-white">{prod.productName}</h4>
                     <div className="flex justify-between text-xs font-mono pt-1 text-slate-300">
                       <span>Subscribe & Save Deals</span>
-                      <span className="text-emerald-400 font-bold">${prod.discountedPriceUSD.toFixed(2)}</span>
+                      <span className="text-cyan-400 font-bold">${prod.discountedPriceUSD.toFixed(2)}</span>
                     </div>
                   </div>
                 ))}
@@ -297,8 +296,8 @@ export default function Dashboard() {
               {/* PRAVA ACTION BAR */}
               <div className="pt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-t border-[#22222c]">
                 <div className="flex items-center gap-3.5">
-                  <div className="h-10 w-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
-                    <ShieldCheck className="w-5 h-5 text-emerald-400" />
+                  <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-cyan-500/20 to-blue-500/20 border border-cyan-400/30 flex items-center justify-center">
+                    <ShieldCheck className="w-5 h-5 text-cyan-400" />
                   </div>
                   <div className="text-xs">
                     <span className="font-bold text-white block">One-Click Prava Virtual Card</span>
@@ -307,13 +306,13 @@ export default function Dashboard() {
                 </div>
 
                 {checkoutComplete ? (
-                  <span className="text-xs font-bold text-emerald-400 bg-emerald-500/10 px-5 py-3 rounded-xl border border-emerald-500/20 flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4" /> All Checkouts Placed & Card Expired
+                  <span className="text-xs font-bold text-cyan-300 bg-cyan-500/10 px-5 py-3 rounded-xl border border-cyan-400/30 flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-cyan-400" /> All Checkouts Placed & Card Expired
                   </span>
                 ) : (
                   <button
                     onClick={() => setIsPasskeyModalOpen(true)}
-                    className="py-3.5 px-6 rounded-xl bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-black text-xs uppercase tracking-wider transition-all cursor-pointer flex items-center gap-2 shadow-lg shadow-emerald-400/20 hover:scale-105"
+                    className="py-3.5 px-6 rounded-xl bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-500 hover:from-cyan-300 hover:to-indigo-400 text-slate-950 font-black text-xs uppercase tracking-wider transition-all cursor-pointer flex items-center gap-2 shadow-lg shadow-cyan-500/20 hover:scale-105"
                   >
                     Authorize Passkey & Checkout <ArrowRight className="w-4 h-4 stroke-[3]" />
                   </button>

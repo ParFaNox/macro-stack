@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { FadeIn } from "@/components/fade-in";
-import { Sparkles, ArrowRight } from "lucide-react";
+import { Sparkles } from "lucide-react";
 
 export default function LoginPage() {
   return (
@@ -37,7 +37,7 @@ export default function LoginPage() {
           </form>
 
           <div className="text-center text-xs text-[#8f8f9e]">
-            Don't have an account? <Link href="/signup" className="text-cyan-400 hover:text-cyan-300 font-bold">Sign up</Link>
+            Don&apos;t have an account? <Link href="/signup" className="text-cyan-400 hover:text-cyan-300 font-bold">Sign up</Link>
           </div>
         </div>
       </FadeIn>

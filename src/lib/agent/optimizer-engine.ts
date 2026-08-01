@@ -6,7 +6,8 @@ import type {
 } from '@/types';
 import type { CatalogEntry, LabelAuditResult, RankedCandidate } from '@/types/agent';
 
-import { SUPPLEMENT_CATALOG, matchIngredientFamily } from './catalog';
+import { matchIngredientFamily } from './catalog';
+import { searchProducts } from './product-search';
 import { ReasoningLogCollector } from './logger';
 import { auditNutritionLabel, hasVisionKey } from './vision-auditor';
 
@@ -229,16 +230,39 @@ export async function optimizeStack(
     };
   }
 
-  // Audit + rank every family in parallel.
+  // Find candidate products for each family, then audit and rank them.
+  const searched = await Promise.all(families.map((family) => searchProducts(family)));
+
+  for (const result of searched) {
+    if (result.fallbackReason) {
+      logs.push(
+        'LABEL_AUDIT',
+        'WARNING',
+        `Live retail search unavailable for ${result.query} — using seed catalog`,
+        { reason: result.fallbackReason },
+      );
+    } else {
+      logs.push(
+        'LABEL_AUDIT',
+        'INFO',
+        `${result.query}: ${result.entries.length} candidate product(s) found`,
+        {
+          source:
+            result.sourceMode === 'LIVE_RETAIL_SEARCH'
+              ? 'Live retailer listings (Bright Data)'
+              : 'Seed catalog',
+        },
+      );
+    }
+  }
+
   const ranked = await Promise.all(
-    families.map(async (family) => ({
-      family,
-      candidates: await rankFamily(
-        family,
-        SUPPLEMENT_CATALOG.filter((e) => e.ingredientFamily === family),
-        logs,
-      ),
-    })),
+    searched
+      .filter((r) => r.entries.length > 0)
+      .map(async (result) => ({
+        family: result.query,
+        candidates: await rankFamily(result.query, result.entries, logs),
+      })),
   );
 
   // Preferred brands win ties without overriding value: a preferred brand is

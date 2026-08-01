@@ -69,6 +69,30 @@ npx @modelcontextprotocol/inspector
 
 …then connect to `http://localhost:3000/api/mcp`.
 
+## Where products come from
+
+`src/lib/agent/product-search.ts` is the single seam between "what products
+exist" and everything that reasons about them. Two providers:
+
+| Provider | When it runs | What you get |
+| --- | --- | --- |
+| `seed` | default | The built-in 15-product catalog. Offline, deterministic, always works. |
+| `brightdata` | `BRIGHTDATA_API_KEY` + `BRIGHTDATA_SERP_ZONE` set | Live retailer listings via Bright Data's SERP API (Google Shopping), normalised into `CatalogEntry` shape by the LLM. |
+
+The live provider falls back to the seed catalog on **any** failure — missing
+key, network, quota, unparseable response — and the reason appears in the
+reasoning logs. Force the offline catalog with `PRODUCT_SEARCH_PROVIDER=seed`.
+
+> **Untested path.** The Bright Data provider is written against the documented
+> SERP API but has never been executed — there was no account or key available
+> when it was built. Expect to debug the response shape on first real run. The
+> seed path is fully tested and is what every verification above exercised.
+
+Live listings have no supplement-facts panel to read, so the product photo is
+passed to the auditor as the label. Gemini will report low confidence when it
+isn't a facts panel, which is the honest outcome rather than pretending a label
+was audited.
+
 ## Frontend integration (Teammate 1)
 
 Replace the `setTimeout` mock in `src/app/compare/page.tsx` with one call from

@@ -46,7 +46,7 @@ export interface AgentReasoningLog {
   step: AgentLogStep;
   status: AgentLogStatus;
   message: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 // --- 3. PRAVA CARD & CHECKOUT SCHEMA ---

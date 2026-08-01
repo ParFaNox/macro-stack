@@ -13,7 +13,10 @@ import {
   Search,
   Plus,
   Trash2,
-  ShieldCheck
+  ShieldCheck,
+  TrendingDown,
+  Zap,
+  Check
 } from "lucide-react";
 
 export default function Dashboard() {
@@ -151,157 +154,168 @@ export default function Dashboard() {
   const netSavings = originalTotal - auditedTotal;
 
   return (
-    <div className="min-h-screen bg-[#0c0c0e] text-[#f2f2f7] font-[Helvetica_Neue,Helvetica,Arial,sans-serif] selection:bg-[#0a84ff] selection:text-white antialiased">
+    <div className="min-h-screen bg-[#08080a] text-[#f0f0f5] font-sans antialiased selection:bg-emerald-400 selection:text-slate-950">
       <Navbar />
 
-      <main className="max-w-5xl mx-auto px-6 py-16 space-y-16">
-        {/* HELVETICA APPLE DARK HERO */}
-        <section className="text-center space-y-4 max-w-3xl mx-auto pt-6">
-          <h1 className="text-4xl sm:text-6xl md:text-7xl font-[#700] tracking-tight text-white leading-none">
+      <main className="max-w-6xl mx-auto px-6 py-16 space-y-16">
+        {/* MODERN HIGH-IMPACT HERO */}
+        <section className="text-center space-y-5 max-w-4xl mx-auto pt-6">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold tracking-wide">
+            <Zap className="w-3.5 h-3.5 fill-emerald-400" /> Autonomous Multi-Item Stack Audit Engine
+          </div>
+
+          <h1 className="text-5xl sm:text-7xl md:text-8xl font-black tracking-tight text-white leading-none font-sans">
             Stop overpaying <br />
-            <span className="text-[#8e8e93]">for supplements.</span>
+            <span className="bg-gradient-to-r from-white via-[#8f8f9e] to-[#555566] bg-clip-text text-transparent">
+              for supplements.
+            </span>
           </h1>
 
-          <p className="text-[#8e8e93] text-base sm:text-lg font-normal max-w-lg mx-auto leading-relaxed pt-2">
+          <p className="text-[#8f8f9e] text-base sm:text-xl font-normal max-w-xl mx-auto leading-relaxed pt-2">
             Audit nutrition labels across stores, calculate true cost-per-gram, and checkout with single-use Prava Virtual Cards.
           </p>
         </section>
 
-        {/* STACK BUILDER CARD SECTION */}
-        <section id="stack-builder" className="max-w-3xl mx-auto space-y-6">
-          <div className="rounded-3xl bg-[#141417] border border-[#242429] p-8 space-y-6 shadow-2xl">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-5 border-b border-[#242429]">
-              <div>
-                <h2 className="text-xl font-bold text-white tracking-tight">Stack Builder</h2>
-                <p className="text-xs text-[#8e8e93]">Add items to audit entire stack across merchants</p>
-              </div>
-              <span className="text-xs text-white bg-[#1c1c1e] px-3 py-1 rounded-full border border-[#2c2c2e] self-start sm:self-auto font-medium">
-                {stackCart.length} Items Selected
-              </span>
-            </div>
-
-            {/* SEARCH & ADD INPUT */}
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                addItemToCart(searchInput);
-              }}
-              className="flex gap-2"
-            >
-              <div className="relative flex-1">
-                <Search className="absolute left-4 top-3 w-4 h-4 text-[#8e8e93]" />
-                <input
-                  type="text"
-                  placeholder="Search and add custom supplement..."
-                  value={searchInput}
-                  onChange={(e) => setSearchInput(e.target.value)}
-                  className="w-full pl-11 pr-4 py-2.5 rounded-xl bg-[#0c0c0e] border border-[#242429] text-white placeholder-[#8e8e93] text-xs focus:outline-none focus:border-[#0a84ff] transition-colors font-normal"
-                />
-              </div>
-              <button
-                type="submit"
-                className="px-5 py-2.5 rounded-xl bg-white hover:bg-[#e5e5ea] text-black font-semibold text-xs transition-all cursor-pointer flex items-center gap-1"
-              >
-                <Plus className="w-3.5 h-3.5" /> Add
-              </button>
-            </form>
-
-            {/* ITEM STACK LIST */}
-            <div className="space-y-2.5">
-              {stackCart.map((item, idx) => (
-                <div
-                  key={idx}
-                  className="flex items-center justify-between p-3.5 rounded-xl bg-[#0c0c0e] border border-[#242429] hover:border-[#3a3a3c] transition-colors"
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="h-2 w-2 rounded-full bg-[#0a84ff]"></span>
-                    <span className="text-xs font-medium text-white">{item}</span>
-                  </div>
-                  <button
-                    onClick={() => removeItemFromCart(idx)}
-                    className="text-[#8e8e93] hover:text-white p-1 transition-colors cursor-pointer"
-                    title="Remove item"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
+        {/* BENTO GRID: STACK BUILDER CART & LIVE TERMINAL */}
+        <div id="stack-builder" className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          {/* STACK BUILDER CART (5 COLS) */}
+          <div className="lg:col-span-5 space-y-6">
+            <div className="rounded-3xl bg-[#121217] border border-[#22222c] p-7 space-y-6 shadow-2xl relative overflow-hidden">
+              <div className="flex items-center justify-between pb-4 border-b border-[#22222c]">
+                <div>
+                  <h2 className="text-lg font-bold text-white tracking-tight">Stack Builder</h2>
+                  <p className="text-xs text-[#8f8f9e]">Add items to audit entire stack across merchants</p>
                 </div>
-              ))}
+                <span className="text-xs text-emerald-400 font-mono font-semibold bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20">
+                  {stackCart.length} Items
+                </span>
+              </div>
+
+              {/* SEARCH & ADD INPUT */}
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  addItemToCart(searchInput);
+                }}
+                className="flex gap-2"
+              >
+                <div className="relative flex-1">
+                  <Search className="absolute left-3.5 top-3 w-4 h-4 text-[#646473]" />
+                  <input
+                    type="text"
+                    placeholder="Search & add custom supplement..."
+                    value={searchInput}
+                    onChange={(e) => setSearchInput(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-[#08080a] border border-[#22222c] text-white placeholder-[#646473] text-xs focus:outline-none focus:border-emerald-400 transition-colors font-medium"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  className="px-4 py-2.5 rounded-xl bg-white hover:bg-slate-200 text-slate-950 font-bold text-xs transition-all cursor-pointer flex items-center gap-1 shadow-md"
+                >
+                  <Plus className="w-3.5 h-3.5" /> Add
+                </button>
+              </form>
+
+              {/* ITEM STACK LIST */}
+              <div className="space-y-2.5 max-h-72 overflow-y-auto pr-1">
+                {stackCart.map((item, idx) => (
+                  <div
+                    key={idx}
+                    className="flex items-center justify-between p-3.5 rounded-xl bg-[#08080a] border border-[#1e1e28] hover:border-emerald-500/40 transition-colors group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-sm shadow-emerald-400"></span>
+                      <span className="text-xs font-semibold text-white">{item}</span>
+                    </div>
+                    <button
+                      onClick={() => removeItemFromCart(idx)}
+                      className="text-[#646473] hover:text-rose-400 p-1 transition-colors cursor-pointer"
+                      title="Remove item"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              {/* AUDIT MAIN BUTTON */}
+              <button
+                onClick={handleAuditEntireStack}
+                disabled={isAuditing || stackCart.length === 0}
+                className="w-full py-4 rounded-xl bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-extrabold text-xs uppercase tracking-wider transition-all disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2 shadow-lg shadow-emerald-400/20 hover:scale-[1.02]"
+              >
+                {isAuditing ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin" /> Auditing Entire Stack...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-4 h-4 fill-slate-950 stroke-[2.5]" /> Audit Entire Stack ({stackCart.length} Items)
+                  </>
+                )}
+              </button>
             </div>
-
-            {/* AUDIT MAIN BUTTON */}
-            <button
-              onClick={handleAuditEntireStack}
-              disabled={isAuditing || stackCart.length === 0}
-              className="w-full py-3.5 rounded-xl bg-[#0a84ff] hover:bg-[#0071e3] text-white font-semibold text-xs transition-all disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
-            >
-              {isAuditing ? (
-                <>
-                  <RefreshCw className="w-3.5 h-3.5 animate-spin" /> Auditing Entire Stack...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="w-3.5 h-3.5 fill-white" /> Audit Entire Stack ({stackCart.length} Items)
-                </>
-              )}
-            </button>
           </div>
-        </section>
 
-        {/* LOG TERMINAL */}
-        <section id="audit-log" className="max-w-3xl mx-auto">
-          <AgentReasoningFeed logs={reasoningLogs} isSearching={isAuditing || isCheckoutExecuting} />
-        </section>
+          {/* LOG TERMINAL (7 COLS) */}
+          <div id="audit-log" className="lg:col-span-7">
+            <AgentReasoningFeed logs={reasoningLogs} isSearching={isAuditing || isCheckoutExecuting} />
+          </div>
+        </div>
 
         {/* RESULTS & PRAVA CHECKOUT */}
         {auditedProducts.length > 0 && (
-          <section className="max-w-3xl mx-auto space-y-6 pt-4">
-            <div className="rounded-3xl bg-[#141417] border border-[#242429] p-8 space-y-6 shadow-2xl">
-              <div className="flex justify-between items-end border-b border-[#242429] pb-5">
+          <section className="space-y-6 pt-4">
+            <div className="rounded-3xl bg-[#121217] border border-[#22222c] p-8 space-y-6 shadow-2xl">
+              <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-[#22222c] pb-6">
                 <div>
-                  <span className="text-xs uppercase tracking-wider text-[#8e8e93] font-medium">Audit Result</span>
-                  <h3 className="text-2xl font-bold text-white mt-1">Cheapest Store Matches</h3>
+                  <span className="text-xs uppercase tracking-wider text-[#8f8f9e] font-bold font-mono">Audit Complete</span>
+                  <h3 className="text-3xl font-black text-white mt-1">Cheapest Store Matches</h3>
                 </div>
                 <div className="text-right">
-                  <span className="text-xs text-[#8e8e93] block">Total Stack Price</span>
-                  <span className="text-2xl font-mono font-bold text-[#0a84ff]">${auditedTotal.toFixed(2)}</span>
+                  <span className="text-xs text-[#8f8f9e] block font-medium">Total Audited Stack Price</span>
+                  <span className="text-3xl font-mono font-bold text-emerald-400">${auditedTotal.toFixed(2)}</span>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {auditedProducts.map((prod) => (
-                  <div key={prod.id} className="p-4 rounded-xl bg-[#0c0c0e] border border-[#242429] space-y-1.5">
-                    <span className="text-[10px] uppercase font-semibold text-[#8e8e93] px-2 py-0.5 rounded bg-[#1c1c1e]">
+                  <div key={prod.id} className="p-4 rounded-2xl bg-[#08080a] border border-[#1e1e28] space-y-2">
+                    <span className="text-[10px] font-bold text-emerald-400 px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20">
                       {prod.vendorName}
                     </span>
-                    <h4 className="text-xs font-medium text-white">{prod.productName}</h4>
-                    <div className="flex justify-between text-xs font-mono pt-1 text-[#0a84ff]">
+                    <h4 className="text-sm font-bold text-white">{prod.productName}</h4>
+                    <div className="flex justify-between text-xs font-mono pt-1 text-slate-300">
                       <span>Subscribe & Save Deals</span>
-                      <span>${prod.discountedPriceUSD.toFixed(2)}</span>
+                      <span className="text-emerald-400 font-bold">${prod.discountedPriceUSD.toFixed(2)}</span>
                     </div>
                   </div>
                 ))}
               </div>
 
               {/* PRAVA ACTION BAR */}
-              <div className="pt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-t border-[#242429]">
-                <div className="flex items-center gap-3">
-                  <ShieldCheck className="w-5 h-5 text-[#0a84ff]" />
+              <div className="pt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-t border-[#22222c]">
+                <div className="flex items-center gap-3.5">
+                  <div className="h-10 w-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
+                    <ShieldCheck className="w-5 h-5 text-emerald-400" />
+                  </div>
                   <div className="text-xs">
-                    <span className="font-semibold text-white block">One-Click Prava Virtual Card</span>
-                    <span className="text-[#8e8e93]">Card hard-capped to ${auditedTotal.toFixed(2)} & auto-expires post-checkout</span>
+                    <span className="font-bold text-white block">One-Click Prava Virtual Card</span>
+                    <span className="text-[#8f8f9e]">Card hard-capped to ${auditedTotal.toFixed(2)} & auto-expires post-checkout</span>
                   </div>
                 </div>
 
                 {checkoutComplete ? (
-                  <span className="text-xs font-medium text-[#0a84ff] bg-[#1c1c1e] px-4 py-2 rounded-xl border border-[#2c2c2e] flex items-center gap-1.5">
+                  <span className="text-xs font-bold text-emerald-400 bg-emerald-500/10 px-5 py-3 rounded-xl border border-emerald-500/20 flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4" /> All Checkouts Placed & Card Expired
                   </span>
                 ) : (
                   <button
                     onClick={() => setIsPasskeyModalOpen(true)}
-                    className="py-2.5 px-5 rounded-xl bg-white hover:bg-[#e5e5ea] text-black font-semibold text-xs transition-colors cursor-pointer flex items-center gap-1.5"
+                    className="py-3.5 px-6 rounded-xl bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-black text-xs uppercase tracking-wider transition-all cursor-pointer flex items-center gap-2 shadow-lg shadow-emerald-400/20 hover:scale-105"
                   >
-                    Authorize Passkey & Checkout <ArrowRight className="w-3.5 h-3.5" />
+                    Authorize Passkey & Checkout <ArrowRight className="w-4 h-4 stroke-[3]" />
                   </button>
                 )}
               </div>

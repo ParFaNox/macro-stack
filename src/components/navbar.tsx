@@ -1,22 +1,27 @@
 "use client";
 
 import Link from "next/link";
-import { ShieldCheck } from "lucide-react";
+import { ShieldCheck, Sparkles } from "lucide-react";
 
 export function Navbar() {
   return (
-    <header className="sticky top-0 z-50 bg-[#0c0c0e]/80 backdrop-blur-md border-b border-[#1c1c1f]">
-      <div className="max-w-5xl mx-auto px-6 h-14 flex items-center justify-between">
-        <Link href="/" className="font-semibold text-base tracking-tight text-white hover:opacity-80 transition-opacity">
-          MacroStack
+    <header className="sticky top-0 z-50 bg-[#08080a]/85 backdrop-blur-xl border-b border-[#181820]">
+      <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+        <Link href="/" className="flex items-center gap-2.5 group">
+          <div className="h-7 w-7 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center group-hover:scale-105 transition-transform">
+            <Sparkles className="h-3.5 w-3.5 text-emerald-400 stroke-[2.5]" />
+          </div>
+          <span className="font-bold text-lg tracking-tight text-white font-sans">
+            MacroStack<span className="text-emerald-400">.ai</span>
+          </span>
         </Link>
 
-        <nav className="flex items-center gap-8 text-xs font-normal text-[#8e8e93]">
+        <nav className="flex items-center gap-8 text-xs font-medium text-[#8f8f9e]">
           <a href="#stack-builder" className="hover:text-white transition-colors">Stack Builder</a>
-          <a href="#audit-log" className="hover:text-white transition-colors">Audit Engine</a>
-          <div className="flex items-center gap-1.5 text-white bg-[#1c1c1e] px-3 py-1 rounded-full text-[11px] font-medium border border-[#2c2c2e]">
-            <ShieldCheck className="w-3.5 h-3.5 text-[#0a84ff]" />
-            <span>Prava Passkey</span>
+          <a href="#audit-log" className="hover:text-white transition-colors">Live Audit</a>
+          <div className="flex items-center gap-2 text-white bg-[#121217] px-3.5 py-1.5 rounded-full text-[11px] font-semibold border border-[#22222c] shadow-sm">
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+            <span>Prava Protected</span>
           </div>
         </nav>
       </div>

@@ -8,7 +8,7 @@ import type { CatalogEntry, LabelAuditResult, RankedCandidate } from '@/types/ag
 
 import { SUPPLEMENT_CATALOG, matchIngredientFamily } from './catalog';
 import { ReasoningLogCollector } from './logger';
-import { auditNutritionLabel } from './vision-auditor';
+import { auditNutritionLabel, hasVisionKey } from './vision-auditor';
 
 /**
  * Cost-per-active-gram engine and stack selector.
@@ -111,16 +111,24 @@ async function rankFamily(
       const audit = await auditNutritionLabel(entry.labelImageUrl);
       const product = toSupplementProduct(entry, audit);
 
+      // A live audit that quietly degraded to the mock (rate limit, bad image)
+      // must say so here, or the feed shows a confident reading that no model
+      // actually produced.
+      const degraded = hasVisionKey() && audit.source === 'DETERMINISTIC_MOCK';
+
       logs.push(
         'LABEL_AUDIT',
-        audit.fillerCallouts.length > 0 ? 'WARNING' : 'SUCCESS',
-        audit.fillerCallouts.length > 0
-          ? `${entry.brand} ${entry.productName} — deceptive labelling detected`
-          : `${entry.brand} ${entry.productName} — label verified`,
+        degraded || audit.fillerCallouts.length > 0 ? 'WARNING' : 'SUCCESS',
+        degraded
+          ? `${entry.brand} ${entry.productName} — live audit unavailable, using offline reading`
+          : audit.fillerCallouts.length > 0
+            ? `${entry.brand} ${entry.productName} — deceptive labelling detected`
+            : `${entry.brand} ${entry.productName} — label verified`,
         {
           vendor: entry.vendorName,
           source: audit.source,
           ...(audit.modelId ? { model: audit.modelId } : {}),
+          ...(degraded && audit.notes ? { degradedReason: audit.notes } : {}),
           activeGramsPerServing: Number(activeGramsPerServing(product.activeIngredients).toFixed(2)),
           fillerPercentage: audit.fillerPercentage,
           confidence: audit.confidence,

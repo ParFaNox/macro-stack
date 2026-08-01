@@ -77,4 +77,22 @@ export interface CatalogEntry {
   /** Label-quality signals the mock auditor reports; a live model would read
    *  these off the image instead. */
   fillerCallouts?: string[];
+
+  // --- Fields used only to render the supplement-facts panel image ---
+  /** Total serving size including inactive excipients. Defaults to the active
+   *  total plus a small excipient allowance. */
+  servingSizeGrams?: number;
+  /** Scoop/capsule wording for the serving line. */
+  servingUnit?: string;
+  /** "Other Ingredients:" footer line. */
+  otherIngredients?: string[];
+  /** When set, the panel renders a proprietary blend that hides per-ingredient
+   *  dosing — the exact pattern the auditor is meant to catch. */
+  proprietaryBlend?: {
+    name: string;
+    totalMg: number;
+    /** Listed in descending order by weight, as regulations require, but with
+     *  no individual amounts. */
+    components: string[];
+  };
 }

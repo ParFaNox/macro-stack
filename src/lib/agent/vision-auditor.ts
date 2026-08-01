@@ -1,3 +1,6 @@
+import fs from 'node:fs';
+import path from 'node:path';
+
 import OpenAI from 'openai';
 import { z } from 'zod';
 
@@ -20,7 +23,10 @@ import { findCatalogEntryByLabelUrl } from './catalog';
  */
 
 const DEFAULT_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/openai/';
-const DEFAULT_MODEL = 'gemini-3.6-flash';
+// gemini-3.6-flash exists but its free tier is capped at 20 requests, which a
+// single 15-label warm run exhausts. 3.5-flash is multimodal with a workable
+// free allowance.
+const DEFAULT_MODEL = 'gemini-3.5-flash';
 
 export function hasVisionKey(): boolean {
   return Boolean(process.env.VISION_API_KEY?.trim());
@@ -75,13 +81,24 @@ Respond with a single JSON object and nothing else, matching exactly:
  "confidence":number,"notes":string}`;
 
 /**
+ * App-relative label paths (`/labels/<id>`) have to become absolute before
+ * fetch() will touch them — Node's fetch rejects a relative URL outright.
+ */
+export function absoluteImageUrl(imageUrl: string): string {
+  if (imageUrl.startsWith('data:') || /^https?:\/\//i.test(imageUrl)) return imageUrl;
+
+  const base = process.env.NEXT_PUBLIC_APP_URL?.trim() || 'http://localhost:3000';
+  return new URL(imageUrl, base).toString();
+}
+
+/**
  * Vision APIs are most reliable with inline base64. Remote URLs are fetched and
  * inlined; data: URLs pass straight through.
  */
 async function toImagePayload(imageUrl: string): Promise<string> {
   if (imageUrl.startsWith('data:')) return imageUrl;
 
-  const res = await fetch(imageUrl);
+  const res = await fetch(absoluteImageUrl(imageUrl));
   if (!res.ok) {
     throw new Error(`Could not fetch label image (HTTP ${res.status}): ${imageUrl}`);
   }
@@ -102,6 +119,14 @@ async function auditWithVisionModel(imageUrl: string): Promise<LabelAuditResult>
   const completion = await client.chat.completions.create({
     model: modelId,
     response_format: { type: 'json_object' },
+    // Multi-ingredient panels (electrolyte blends list three or more salts)
+    // overrun a small default budget and come back as truncated, unparseable
+    // JSON. Give the response room.
+    // Gemini flash models spend part of this budget on internal reasoning, so a
+    // 2k ceiling still truncated multi-ingredient panels mid-JSON.
+    max_completion_tokens: 8192,
+    // Label reading should be literal, not creative.
+    temperature: 0,
     messages: [
       { role: 'system', content: SYSTEM_PROMPT },
       {
@@ -137,6 +162,113 @@ async function auditWithVisionModel(imageUrl: string): Promise<LabelAuditResult>
     fillerCallouts: result.data.fillerCallouts ?? [],
   };
 }
+
+/**
+ * Audit cache.
+ *
+ * The catalog's labels are fixed and the panels are deterministic, so the same
+ * image always yields the same reading. Caching means only the first optimize
+ * run spends quota — every later run, and every repeat of a demo, is free and
+ * instant. Uploaded images (data: URIs) are skipped: they're one-shot and the
+ * key would be megabytes.
+ */
+const auditCache = new Map<string, LabelAuditResult>();
+
+/**
+ * The cache is also persisted to disk, because the free tier's per-minute cap
+ * is the real constraint: a 5-ingredient stack needs 15 audits, which no amount
+ * of in-request pacing can fit under the limit. Run `npm run warm-labels` once
+ * to populate this slowly, and every later run is instant, fully live-audited
+ * and costs zero quota. Gitignored — it's a local cache, not source.
+ */
+const CACHE_FILE = path.join(process.cwd(), '.macrostack-cache', 'label-audits.json');
+let cacheLoaded = false;
+
+function loadCacheFromDisk(): void {
+  if (cacheLoaded) return;
+  cacheLoaded = true;
+  try {
+    const raw = fs.readFileSync(CACHE_FILE, 'utf8');
+    for (const [key, value] of Object.entries(JSON.parse(raw) as Record<string, LabelAuditResult>)) {
+      auditCache.set(key, value);
+    }
+  } catch {
+    // No cache yet — expected on a fresh clone.
+  }
+}
+
+function persistCacheToDisk(): void {
+  try {
+    fs.mkdirSync(path.dirname(CACHE_FILE), { recursive: true });
+    fs.writeFileSync(CACHE_FILE, JSON.stringify(Object.fromEntries(auditCache), null, 2));
+  } catch {
+    // A read-only filesystem just means no persistence; the in-memory cache
+    // still works, so this must never break a request.
+  }
+}
+
+export function clearAuditCache(): void {
+  auditCache.clear();
+  try {
+    fs.rmSync(CACHE_FILE, { force: true });
+  } catch {
+    /* ignore */
+  }
+}
+
+/** How many labels already have a cached live reading. */
+export function auditCacheStats(): { cached: number; live: number } {
+  loadCacheFromDisk();
+  const values = [...auditCache.values()];
+  return {
+    cached: values.length,
+    live: values.filter((v) => v.source === 'LIVE_VISION_MODEL').length,
+  };
+}
+
+/**
+ * Free-tier quota is per-minute, and a 5-ingredient stack fires 15 audits at
+ * once. Unbounded parallelism trips the limit and silently degrades most of
+ * them to mock, which makes the demo look fake for no reason. Cap in-flight
+ * calls and retry the ones that do get throttled.
+ */
+const MAX_CONCURRENT_VISION_CALLS = 4;
+let inFlight = 0;
+const waiting: Array<() => void> = [];
+
+async function acquireSlot(): Promise<void> {
+  if (inFlight < MAX_CONCURRENT_VISION_CALLS) {
+    inFlight++;
+    return;
+  }
+  await new Promise<void>((resolve) => waiting.push(resolve));
+  inFlight++;
+}
+
+function releaseSlot(): void {
+  inFlight--;
+  waiting.shift()?.();
+}
+
+function isRateLimited(error: unknown): boolean {
+  const msg = error instanceof Error ? error.message : String(error);
+  return /429|rate limit|RESOURCE_EXHAUSTED|quota/i.test(msg);
+}
+
+/**
+ * Gemini's 429 body carries "Please retry in 47.87s". Honour it — guessing a
+ * backoff just burns more of the very quota we're waiting on. Returns null when
+ * the wait is longer than we're willing to block a request for.
+ */
+function suggestedRetryDelayMs(error: unknown, capMs: number): number | null {
+  const msg = error instanceof Error ? error.message : String(error);
+  const m = msg.match(/retry in ([\d.]+)s/i);
+  if (!m) return null;
+  const ms = Math.ceil(Number(m[1]) * 1000) + 250;
+  return ms <= capMs ? ms : null;
+}
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 /** Stable 32-bit hash so unknown images produce the same mock audit every run. */
 function hashString(input: string): number {
@@ -216,14 +348,50 @@ export function mockAuditNutritionLabel(imageUrl: string): LabelAuditResult {
 export async function auditNutritionLabel(imageUrl: string): Promise<LabelAuditResult> {
   if (!hasVisionKey()) return mockAuditNutritionLabel(imageUrl);
 
-  try {
-    return await auditWithVisionModel(imageUrl);
-  } catch (error) {
-    const reason = error instanceof Error ? error.message : String(error);
-    const fallback = mockAuditNutritionLabel(imageUrl);
-    return {
-      ...fallback,
-      notes: `Live vision call failed (${reason}). Fell back to deterministic mock.`,
-    };
+  loadCacheFromDisk();
+
+  const cacheable = !imageUrl.startsWith('data:');
+  const cached = cacheable ? auditCache.get(imageUrl) : undefined;
+  if (cached) return cached;
+
+  // Retrying a rate-limited call spends the very quota it is waiting on: at 15
+  // labels x 3 attempts you issue 45 requests against a 20/min cap and every
+  // one fails. So retry at most once, and only when the API's own suggested
+  // delay is short enough to wait out. VISION_MAX_ATTEMPTS=1 disables it
+  // entirely, which is what the prewarm script wants.
+  const maxAttempts = Math.max(1, Number(process.env.VISION_MAX_ATTEMPTS ?? 2) || 1);
+  const RETRY_WAIT_CAP_MS = 15_000;
+  let lastError: unknown;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    await acquireSlot();
+    try {
+      const result = await auditWithVisionModel(imageUrl);
+      if (cacheable) {
+        auditCache.set(imageUrl, result);
+        persistCacheToDisk();
+      }
+      return result;
+    } catch (error) {
+      lastError = error;
+      if (attempt === maxAttempts || !isRateLimited(error)) break;
+
+      const wait = suggestedRetryDelayMs(error, RETRY_WAIT_CAP_MS);
+      if (wait === null) break; // Longer than we'll block for — fall back now.
+      await sleep(wait);
+    } finally {
+      releaseSlot();
+    }
   }
+
+  const reason = lastError instanceof Error ? lastError.message : String(lastError);
+  const fallback = mockAuditNutritionLabel(imageUrl);
+  return {
+    ...fallback,
+    notes: isRateLimited(lastError)
+      ? 'Live vision call was rate-limited, so this reading is the deterministic mock. ' +
+        'The Gemini free tier allows 20 requests/minute — run `npm run warm-labels` once ' +
+        'to cache a real reading for every label.'
+      : `Live vision call failed (${reason}). Fell back to deterministic mock.`,
+  };
 }

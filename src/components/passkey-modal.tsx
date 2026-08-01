@@ -2,45 +2,79 @@
 
 import { useState } from "react";
 import { ShieldCheck, Fingerprint, Lock, CheckCircle } from "lucide-react";
-import { SupplementProduct, PravaCardDetails } from "@/types";
+import { SupplementProduct } from "@/types";
+import { authorizeAndMintCard, pollForCard, type MintedCardClient } from "@/lib/prava/client";
 
 interface Props {
   isOpen: boolean;
   onClose: () => void;
   products: SupplementProduct[];
   totalAmountUSD: number;
-  onAuthorized: (card: PravaCardDetails) => void;
+  onAuthorized: (card: MintedCardClient) => void;
 }
 
 export function PasskeyModal({ isOpen, onClose, products, totalAmountUSD, onAuthorized }: Props) {
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
+  /**
+   * Real authorization + mint. The server issues a challenge bound to this
+   * amount and merchant, verifies the signature, and only then asks Prava for a
+   * single-use credential capped at the approved total.
+   */
   const handlePasskeyAuth = async () => {
     setIsAuthenticating(true);
-    // Simulate WebAuthn Passkey prompt & Prava Virtual Card minting call
-    setTimeout(() => {
-      setIsAuthenticating(false);
+    setError(null);
+
+    try {
+      const { card, session, passkeyMode, simulatedWarning } = await authorizeAndMintCard(
+        Number(totalAmountUSD.toFixed(2)),
+        "NutriMart (demo)",
+        products.map((p) => ({
+          description: p.productName,
+          unitPrice: Number(p.discountedPriceUSD.toFixed(2)),
+          quantity: 1,
+        })),
+      );
+
+      if (passkeyMode === "SIMULATED" && simulatedWarning) setNotice(simulatedWarning);
+
+      if (card) {
+        setIsSuccess(true);
+        onAuthorized(card);
+        return;
+      }
+
+      if (!session) throw new Error("Prava returned neither a card nor an approval session.");
+
+      // Prava issues the credential only after the user approves on their own
+      // hosted surface. Open it and wait — never try to route around it.
+      setNotice(
+        "Complete card approval in the Prava window, then this will continue automatically. " +
+          "Sandbox test card 4622 9431 2313 7789 · CVV 757 · exp 12/27 · OTP 456789.",
+      );
+      window.open(session.iframeUrl, "prava-approval", "width=460,height=720");
+
+      const approved = await pollForCard(session.sessionId, {
+        onWait: (ms) =>
+          setNotice(
+            `Waiting for approval in the Prava window… (${Math.round(ms / 1000)}s)  ` +
+              "Test card 4622 9431 2313 7789 · CVV 757 · exp 12/27 · OTP 456789.",
+          ),
+      });
+
+      setNotice(null);
       setIsSuccess(true);
-
-      const mockPravaCard: PravaCardDetails = {
-        cardId: `prv_card_${Math.random().toString(36).substring(2, 9)}`,
-        cardNumber: "4000123456789010",
-        expiryMonth: "12",
-        expiryYear: "28",
-        cvv: "888",
-        cardHolderName: "MacroStack Buyer",
-        billingZip: "90210",
-        isSingleUse: true,
-        status: "ACTIVE",
-      };
-
-      setTimeout(() => {
-        onAuthorized(mockPravaCard);
-      }, 1000);
-    }, 1500);
+      onAuthorized(approved);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Authorization failed");
+    } finally {
+      setIsAuthenticating(false);
+    }
   };
 
   return (
@@ -106,7 +140,18 @@ export function PasskeyModal({ isOpen, onClose, products, totalAmountUSD, onAuth
             </button>
           </div>
         )}
-      </div>
+      
+        {error && (
+          <p className="mt-4 text-[11px] text-rose-300 bg-rose-500/10 border border-rose-500/30 rounded-lg p-3">
+            {error}
+          </p>
+        )}
+        {notice && (
+          <p className="mt-3 text-[10px] text-amber-300/90 bg-amber-500/10 border border-amber-500/30 rounded-lg p-2.5">
+            {notice}
+          </p>
+        )}
+</div>
     </div>
   );
 }

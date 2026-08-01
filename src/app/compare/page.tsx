@@ -9,7 +9,8 @@ import { AgentReasoningFeed } from "@/components/agent-reasoning-feed";
 import { PasskeyModal } from "@/components/passkey-modal";
 import { AnimatedCounter } from "@/components/animated-counter";
 import { PriceComparisonChart } from "@/components/price-comparison-chart";
-import { SupplementProduct, AgentReasoningLog, PravaCardDetails } from "@/types";
+import { SupplementProduct, AgentReasoningLog, CheckoutExecutionPayload } from "@/types";
+import { executeCheckout, type MintedCardClient } from "@/lib/prava/client";
 import { streamOptimizeStack } from "@/lib/agent/client";
 import { DEFAULT_BUDGET_USD, DEFAULT_STACK, STACK_STORAGE_KEY } from "@/lib/stack-store";
 import { ShieldCheck, CheckCircle2, ArrowRight, TrendingDown, BarChart3 } from "lucide-react";
@@ -22,6 +23,8 @@ export default function ComparePage() {
   const [auditError, setAuditError] = useState<string | null>(null);
   const [isPasskeyModalOpen, setIsPasskeyModalOpen] = useState(false);
   const [checkoutComplete, setCheckoutComplete] = useState(false);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const [orderIds, setOrderIds] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<"chart" | "cards">("chart");
 
   useEffect(() => {
@@ -74,27 +77,65 @@ export default function ComparePage() {
     };
   }, []);
 
-  const handlePasskeyAuthorized = async (card: PravaCardDetails) => {
+  /**
+   * Real checkout. The card is a live Prava credential capped at this exact
+   * total; Playwright drives the merchant with it, then the credential is
+   * retired so the subscription cannot renew.
+   */
+  const handlePasskeyAuthorized = async (card: MintedCardClient) => {
     setIsPasskeyModalOpen(false);
     setIsCheckoutExecuting(true);
-    const totalCost = auditedProducts.reduce((a, b) => a + b.discountedPriceUSD, 0);
-    setReasoningLogs((prev) => [...prev, {
-      id: "log_4", timestamp: new Date().toISOString(),
-      step: "CARD_MINTING", status: "SUCCESS",
-      message: `Prava card ****${card.cardNumber.slice(-4)} minted. Cap: $${totalCost.toFixed(2)}`,
-      metadata: { status: card.status, singleUse: card.isSingleUse },
-    }]);
 
-    setTimeout(() => {
-      setReasoningLogs((prev) => [...prev, {
-        id: "log_5", timestamp: new Date().toISOString(),
-        step: "CHECKOUT_AUTOMATION", status: "SUCCESS",
-        message: `All checkouts placed. Card expired.`,
-        metadata: { orderId: "ORD-9921", status: "Complete" },
-      }]);
+    setReasoningLogs((prev) => [
+      ...prev,
+      {
+        id: `card_${card.sessionId}`,
+        timestamp: new Date().toISOString(),
+        step: "CARD_MINTING",
+        status: "SUCCESS",
+        message: `Prava single-use card ••••${card.cardNumber.slice(-4)} minted, capped at $${card.amountCapUSD.toFixed(2)}`,
+        metadata: {
+          environment: card.environment,
+          sessionId: card.sessionId,
+          merchant: card.merchantName,
+          singleUse: card.isSingleUse,
+        },
+      },
+    ]);
+
+    try {
+      const result = await executeCheckout(
+        {
+          products: auditedProducts,
+          shippingAddress: {
+            fullName: "Alex Demo",
+            streetAddress: "1 Market Street",
+            city: "San Francisco",
+            state: "CA",
+            zipCode: "94105",
+            email: "demo@macrostack.test",
+          },
+          cardDetails: card as unknown as CheckoutExecutionPayload["cardDetails"],
+        },
+        {
+          onLog: (log) => setReasoningLogs((prev) => [...prev, log]),
+          onError: (message) => setCheckoutError(message),
+        },
+      );
+
+      if (result?.success) {
+        setOrderIds(result.orderId ?? null);
+        setCheckoutComplete(true);
+      } else {
+        setCheckoutError(
+          result ? "Checkout did not complete — see the log above." : "Checkout produced no result.",
+        );
+      }
+    } catch (e) {
+      setCheckoutError(e instanceof Error ? e.message : "Checkout failed");
+    } finally {
       setIsCheckoutExecuting(false);
-      setCheckoutComplete(true);
-    }, 1600);
+    }
   };
 
   const originalTotal = auditedProducts.reduce((acc, p) => acc + p.totalPriceUSD, 0);
@@ -238,9 +279,22 @@ export default function ComparePage() {
                     </div>
 
                     {checkoutComplete ? (
-                      <span className="text-[11px] font-bold text-cyan-300 bg-cyan-500/10 px-4 py-2.5 rounded-lg border border-cyan-400/30 flex items-center gap-1.5">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-cyan-400" /> Complete · Card Expired
-                      </span>
+                      <div className="flex flex-col items-end gap-1.5">
+                        <span className="text-[11px] font-bold text-cyan-300 bg-cyan-500/10 px-4 py-2.5 rounded-lg border border-cyan-400/30 flex items-center gap-1.5">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-cyan-400" /> Complete · Card Retired
+                        </span>
+                        {orderIds && (
+                          <span className="text-[10px] text-[#8f8f9e] font-mono">{orderIds}</span>
+                        )}
+                        {orderIds && (
+                          <Link
+                            href={`/mock-merchant/confirmation?order=${encodeURIComponent(orderIds.split(",")[0].trim())}`}
+                            className="text-[10px] font-bold text-cyan-300 hover:text-cyan-200"
+                          >
+                            Try the renewal charge →
+                          </Link>
+                        )}
+                      </div>
                     ) : (
                       <button onClick={() => setIsPasskeyModalOpen(true)}
                         className="py-3 px-5 rounded-xl bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-500 hover:from-cyan-300 hover:to-indigo-400 text-slate-950 font-black text-[11px] uppercase tracking-wider transition-all cursor-pointer flex items-center gap-2 shadow-lg shadow-cyan-500/20 hover:scale-105">
@@ -248,6 +302,12 @@ export default function ComparePage() {
                       </button>
                     )}
                   </div>
+
+                  {checkoutError && (
+                    <p className="text-[11px] text-rose-300 bg-rose-500/10 border border-rose-500/30 rounded-lg p-3">
+                      {checkoutError}
+                    </p>
+                  )}
                 </div>
               )}
             </div>

@@ -43,3 +43,6 @@ next-env.d.ts
 
 # local label-audit cache (see npm run warm-labels)
 /.macrostack-cache
+
+# Playwright checkout screenshots (regenerated per run)
+/public/demo-proof

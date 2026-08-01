@@ -20,7 +20,9 @@ import {
   ExternalLink,
   ShieldCheck,
   PackageCheck,
-  TrendingDown
+  TrendingDown,
+  Layers,
+  ArrowUpRight
 } from "lucide-react";
 
 export default function Dashboard() {
@@ -65,7 +67,7 @@ export default function Dashboard() {
       timestamp: new Date().toISOString(),
       step: "LABEL_AUDIT",
       status: "INFO",
-      message: `Initiating multi-item OCR audit for ${stackCart.length} supplements in your stack cart...`,
+      message: `Auditing ${stackCart.length} stack items across Amazon, iHerb, and Vendor Direct...`,
     };
     setReasoningLogs([log1]);
 
@@ -75,20 +77,20 @@ export default function Dashboard() {
         timestamp: new Date().toISOString(),
         step: "COST_CALCULATION",
         status: "INFO",
-        message: "Cross-checking Amazon, iHerb, Bodybuilding.com & Vendor Direct. Calculating true active cost-per-gram...",
+        message: "Calculated active cost-per-gram. Selected Subscribe & Save 15-20% discount tiers.",
       };
       setReasoningLogs((prev) => [...prev, log2]);
-    }, 1000);
+    }, 900);
 
     setTimeout(() => {
       const mockResults: SupplementProduct[] = stackCart.map((item, idx) => {
         const basePrices = [25.49, 32.99, 42.50, 19.99, 14.99];
         const origPrices = [29.99, 39.99, 49.99, 24.99, 18.99];
-        const stores = ["iHerb Direct", "Vendor Direct", "Amazon Warehouse", "Bodybuilding.com", "iHerb Direct"];
+        const stores = ["iHerb Direct", "Vendor Direct", "Amazon", "Bodybuilding.com", "iHerb Direct"];
 
         return {
           id: `prod_${idx}`,
-          brand: "Lab-Verified",
+          brand: "Lab-Certified",
           productName: item,
           imageUrl: "/supp.jpg",
           labelImageUrl: "/label.jpg",
@@ -108,18 +110,18 @@ export default function Dashboard() {
         timestamp: new Date().toISOString(),
         step: "STACK_OPTIMIZATION",
         status: "SUCCESS",
-        message: `Entire ${stackCart.length}-product stack optimized! Found lowest prices across 3 stores.`,
+        message: `Entire ${stackCart.length}-item stack audit complete. Lowest store prices matched.`,
         metadata: {
           originalStackTotal: `$${mockResults.reduce((a, b) => a + b.totalPriceUSD, 0).toFixed(2)}`,
           auditedStackTotal: `$${mockResults.reduce((a, b) => a + b.discountedPriceUSD, 0).toFixed(2)}`,
-          netSavings: `$${(mockResults.reduce((a, b) => a + b.totalPriceUSD, 0) - mockResults.reduce((a, b) => a + b.discountedPriceUSD, 0)).toFixed(2)} (Subscribe & Save Locked)`,
+          netSavings: `$${(mockResults.reduce((a, b) => a + b.totalPriceUSD, 0) - mockResults.reduce((a, b) => a + b.discountedPriceUSD, 0)).toFixed(2)}`,
         },
       };
 
       setReasoningLogs((prev) => [...prev, log3]);
       setAuditedProducts(mockResults);
       setIsAuditing(false);
-    }, 2200);
+    }, 2000);
   };
 
   const handlePasskeyAuthorized = async (card: PravaCardDetails) => {
@@ -144,13 +146,13 @@ export default function Dashboard() {
         timestamp: new Date().toISOString(),
         step: "CHECKOUT_AUTOMATION",
         status: "SUCCESS",
-        message: `Playwright Headless browser automated checkouts across stores for all ${auditedProducts.length} items. Prava card expired safely.`,
-        metadata: { orderId: "ORD-STACK-9921", status: "All Dispatched & Card Blocked" },
+        message: `Playwright Headless browser completed checkouts. Prava card expired safely.`,
+        metadata: { orderId: "ORD-STACK-9921", status: "Completed & Card Expired" },
       };
       setReasoningLogs((prev) => [...prev, logPlaywright]);
       setIsCheckoutExecuting(false);
       setCheckoutComplete(true);
-    }, 2000);
+    }, 1800);
   };
 
   const originalTotal = auditedProducts.reduce((acc, p) => acc + p.totalPriceUSD, 0);
@@ -158,201 +160,174 @@ export default function Dashboard() {
   const netSavings = originalTotal - auditedTotal;
 
   return (
-    <div className="min-h-screen bg-[#060812] text-slate-100 font-sans selection:bg-cyan-400 selection:text-slate-950 relative overflow-hidden">
-      <div className="absolute top-[-15%] left-[25%] w-[600px] h-[600px] bg-gradient-to-tr from-cyan-500/15 via-indigo-600/20 to-purple-600/15 rounded-full blur-[160px] pointer-events-none"></div>
-
+    <div className="min-h-screen bg-[#090a0f] text-slate-200 font-sans selection:bg-emerald-400 selection:text-slate-950">
       <Navbar />
 
-      <main className="max-w-7xl mx-auto px-6 py-10 space-y-12 relative z-10">
-        {/* HEADER */}
-        <section className="text-center max-w-3xl mx-auto space-y-4">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-gradient-to-r from-cyan-500/10 via-indigo-500/10 to-purple-500/10 border border-cyan-400/30 text-cyan-300 text-xs font-bold tracking-wide">
-            <Zap className="w-4 h-4 text-cyan-400 fill-cyan-400" /> Full Stack Cart Optimizer & Audit Engine
+      <main className="max-w-7xl mx-auto px-6 py-12 space-y-10">
+        {/* LINEAR-STYLE CLEAN HERO SECTION */}
+        <section className="space-y-4 max-w-3xl">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-slate-900 border border-slate-800 text-slate-300 text-xs font-mono">
+            <Layers className="w-3.5 h-3.5 text-emerald-400" /> Multi-Item Stack Audit Platform
           </div>
 
-          <h1 className="text-4xl md:text-6xl font-black tracking-tight text-white leading-tight">
+          <h1 className="text-3xl md:text-5xl font-bold tracking-tight text-slate-100 leading-tight">
             Stop overpaying for supplements.
           </h1>
 
-          <p className="text-slate-300 text-base md:text-lg leading-relaxed">
-            Build your entire 4-5 supplement stack below. Our AI agent audits nutrition labels across all major stores, finds the cheapest deals, and buys them all with a single-use <strong className="text-white">Prava Virtual Card</strong>.
+          <p className="text-slate-400 text-sm md:text-base leading-relaxed">
+            Build your supplement stack, audit active ingredient cost-per-gram across stores, and automate checkouts using <strong className="text-slate-200">Prava Virtual Cards</strong> to lock Subscribe & Save discounts safely.
           </p>
         </section>
 
-        {/* STACK BUILDER CART & LIVE AUDIT TERMINAL GRID */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          {/* STACK BUILDER CART (5 COLS) */}
-          <div className="lg:col-span-5 space-y-6">
-            <div className="rounded-3xl bg-slate-900/90 border border-indigo-500/25 p-7 shadow-2xl backdrop-blur-2xl space-y-6">
-              <div className="flex items-center justify-between pb-4 border-b border-slate-800">
-                <div className="flex items-center gap-2.5">
-                  <div className="p-2 rounded-xl bg-cyan-500/10 border border-cyan-400/30 text-cyan-400">
-                    <ShoppingCart className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h2 className="text-base font-bold text-white">Stack Builder Cart</h2>
-                    <p className="text-[11px] text-slate-400">{stackCart.length} supplements in stack</p>
-                  </div>
+        {/* BENTO GRID LAYOUT */}
+        <div id="stack-builder" className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          {/* STACK CART (5 COLS) */}
+          <div className="lg:col-span-5 space-y-4">
+            <div className="rounded-xl bg-[#0d0e15] border border-slate-800 p-6 space-y-5 shadow-xl">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-800/80">
+                <div className="flex items-center gap-2">
+                  <ShoppingCart className="w-4 h-4 text-emerald-400" />
+                  <h2 className="text-sm font-semibold text-slate-100">Stack Cart</h2>
                 </div>
-                <span className="text-[10px] font-bold text-cyan-300 bg-cyan-500/10 px-2.5 py-1 rounded-lg border border-cyan-400/30">
-                  FULL STACK AUDIT
+                <span className="text-[10px] font-mono text-slate-400 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
+                  {stackCart.length} Items
                 </span>
               </div>
 
-              {/* ADD CUSTOM ITEM SEARCH INPUT */}
+              {/* SEARCH & ADD INPUT */}
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
                   addItemToCart(searchInput);
                 }}
-                className="relative flex items-center"
+                className="flex gap-2"
               >
-                <Search className="absolute left-4 w-4 h-4 text-slate-400 pointer-events-none" />
-                <input
-                  type="text"
-                  placeholder="Search & add supplement to stack..."
-                  value={searchInput}
-                  onChange={(e) => setSearchInput(e.target.value)}
-                  className="w-full pl-11 pr-24 py-3 rounded-xl bg-slate-950 border border-slate-800 text-white placeholder-slate-500 text-xs focus:outline-none focus:border-cyan-400 transition-all"
-                />
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-2.5 w-3.5 h-3.5 text-slate-500" />
+                  <input
+                    type="text"
+                    placeholder="Search & add supplement..."
+                    value={searchInput}
+                    onChange={(e) => setSearchInput(e.target.value)}
+                    className="w-full pl-9 pr-3 py-2 rounded-md bg-[#090a0f] border border-slate-800 text-slate-200 placeholder-slate-500 text-xs focus:outline-none focus:border-slate-600 font-mono"
+                  />
+                </div>
                 <button
                   type="submit"
-                  className="absolute right-2 px-3 py-1.5 rounded-lg bg-indigo-500 hover:bg-indigo-400 text-white font-bold text-xs flex items-center gap-1 cursor-pointer transition-colors"
+                  className="px-3 py-2 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium text-xs flex items-center gap-1 transition-colors cursor-pointer"
                 >
                   <Plus className="w-3.5 h-3.5" /> Add
                 </button>
               </form>
 
-              {/* CART ITEMS LIST */}
-              <div className="space-y-2.5 max-h-72 overflow-y-auto pr-1">
+              {/* CART LIST */}
+              <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
                 {stackCart.map((item, idx) => (
                   <div
                     key={idx}
-                    className="flex items-center justify-between p-3 rounded-xl bg-slate-950/80 border border-slate-800/80 hover:border-indigo-500/40 transition-all group"
+                    className="flex items-center justify-between p-2.5 rounded-md bg-[#090a0f] border border-slate-800/60 hover:border-slate-700 text-xs transition-colors"
                   >
-                    <div className="flex items-center gap-3">
-                      <span className="h-6 w-6 rounded-lg bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center text-xs font-mono font-bold text-indigo-400">
-                        {idx + 1}
-                      </span>
-                      <span className="text-xs font-semibold text-slate-200">{item}</span>
+                    <div className="flex items-center gap-2.5">
+                      <span className="text-[10px] font-mono text-slate-500">{idx + 1}.</span>
+                      <span className="font-medium text-slate-300">{item}</span>
                     </div>
                     <button
                       onClick={() => removeItemFromCart(idx)}
-                      className="text-slate-500 hover:text-rose-400 p-1 rounded-lg transition-colors cursor-pointer"
-                      title="Remove item"
+                      className="text-slate-600 hover:text-rose-400 p-1 transition-colors cursor-pointer"
+                      title="Remove"
                     >
-                      <Trash2 className="w-4 h-4" />
+                      <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>
                 ))}
               </div>
 
-              {/* AUDIT ENTIRE STACK BUTTON */}
+              {/* AUDIT BUTTON */}
               <button
                 onClick={handleAuditEntireStack}
                 disabled={isAuditing || stackCart.length === 0}
-                className="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-cyan-400 via-indigo-500 to-purple-500 hover:from-cyan-300 hover:to-purple-400 text-slate-950 font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2.5 shadow-xl shadow-cyan-500/25 transition-all cursor-pointer disabled:opacity-50 hover:scale-[1.02]"
+                className="w-full py-2.5 px-4 rounded-md bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-semibold text-xs flex items-center justify-center gap-2 transition-colors disabled:opacity-50 cursor-pointer"
               >
                 {isAuditing ? (
                   <>
-                    <RefreshCw className="w-5 h-5 animate-spin" /> Auditing Entire Stack across Stores...
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" /> Auditing Stack...
                   </>
                 ) : (
                   <>
-                    <Sparkles className="w-5 h-5 fill-slate-950 stroke-[2.5]" /> Audit Entire Stack ({stackCart.length} Items)
+                    <Sparkles className="w-3.5 h-3.5" /> Audit Entire Stack ({stackCart.length} Items)
                   </>
                 )}
               </button>
             </div>
           </div>
 
-          {/* REASONING STREAM (7 COLS) */}
+          {/* LIVE TERMINAL (7 COLS) */}
           <div className="lg:col-span-7">
             <AgentReasoningFeed logs={reasoningLogs} isSearching={isAuditing || isCheckoutExecuting} />
           </div>
         </div>
 
-        {/* AUDITED STACK RESULTS */}
+        {/* AUDITED RESULTS SECTION */}
         {auditedProducts.length > 0 && (
           <section className="space-y-6 pt-4">
-            {/* SAVINGS SUMMARY BANNER */}
-            <div className="p-7 rounded-3xl bg-slate-900/90 border border-emerald-500/30 grid grid-cols-1 md:grid-cols-3 gap-6 items-center shadow-2xl">
+            {/* AUDIT SUMMARY METRICS */}
+            <div className="rounded-xl bg-[#0d0e15] border border-slate-800 p-6 grid grid-cols-1 md:grid-cols-3 gap-6 shadow-xl">
               <div>
-                <span className="text-xs text-slate-400 uppercase tracking-wider font-bold block">Original Stack Total</span>
-                <span className="text-2xl font-black font-mono text-slate-400 line-through">${originalTotal.toFixed(2)}</span>
+                <span className="text-[11px] font-mono text-slate-500 uppercase block">Original Total</span>
+                <span className="text-xl font-mono text-slate-500 line-through">${originalTotal.toFixed(2)}</span>
               </div>
               <div>
-                <span className="text-xs text-emerald-400 uppercase tracking-wider font-bold block flex items-center gap-1">
-                  <TrendingDown className="w-4 h-4" /> Audited Stack Total
-                </span>
-                <span className="text-3xl font-black font-mono text-emerald-400">${auditedTotal.toFixed(2)}</span>
+                <span className="text-[11px] font-mono text-emerald-400 uppercase block">Audited Best Total</span>
+                <span className="text-2xl font-mono font-bold text-emerald-400">${auditedTotal.toFixed(2)}</span>
               </div>
               <div className="md:text-right">
-                <span className="text-xs text-slate-300 font-bold block">Net Stack Savings</span>
-                <span className="text-xl font-black font-mono text-cyan-300 bg-cyan-500/10 px-3 py-1 rounded-xl border border-cyan-400/30 inline-block mt-1">
-                  Save ${netSavings.toFixed(2)} Across Stores
+                <span className="text-[11px] font-mono text-slate-400 uppercase block">Net Savings</span>
+                <span className="text-sm font-mono font-semibold text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded border border-emerald-500/20 inline-block mt-1">
+                  Saved ${netSavings.toFixed(2)} Across Stores
                 </span>
               </div>
             </div>
 
-            {/* AUDITED ITEMS LIST */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                <PackageCheck className="w-5 h-5 text-cyan-400" /> Audited Store Matches for All {auditedProducts.length} Items
-              </h3>
-
+            {/* RESULTS LIST */}
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold text-slate-200">Cheapest Store Matches</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {auditedProducts.map((prod, i) => (
-                  <div
-                    key={prod.id}
-                    className="p-5 rounded-2xl bg-slate-900 border border-indigo-500/20 space-y-3 shadow-lg"
-                  >
+                {auditedProducts.map((prod) => (
+                  <div key={prod.id} className="p-4 rounded-xl bg-[#0d0e15] border border-slate-800 space-y-2 text-xs">
                     <div className="flex justify-between items-start">
                       <div>
-                        <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-md bg-cyan-500/10 text-cyan-300 border border-cyan-400/30">
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-900 text-slate-400 border border-slate-800">
                           {prod.vendorName}
                         </span>
-                        <h4 className="text-sm font-bold text-white mt-1.5">{prod.productName}</h4>
+                        <h4 className="font-semibold text-slate-200 mt-1">{prod.productName}</h4>
                       </div>
-                      <div className="text-right">
-                        <span className="text-xs text-slate-500 line-through">${prod.totalPriceUSD.toFixed(2)}</span>
-                        <div className="text-base font-black font-mono text-cyan-400">${prod.discountedPriceUSD.toFixed(2)}</div>
-                      </div>
-                    </div>
-
-                    <div className="flex justify-between text-xs text-slate-400 border-t border-slate-800 pt-2 font-mono">
-                      <span>Subscribe & Save: <strong className="text-emerald-400">-{prod.subscribeAndSaveDiscountPct}%</strong></span>
-                      <span>True Active Cost: <strong className="text-white">${prod.costPerGramActiveUSD}/g</strong></span>
+                      <span className="font-mono font-bold text-emerald-400">${prod.discountedPriceUSD.toFixed(2)}</span>
                     </div>
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* ONE-CLICK PRAVA CHECKOUT BAR FOR ENTIRE STACK */}
-            <div className="p-7 rounded-3xl bg-gradient-to-r from-slate-900 via-indigo-950/60 to-slate-900 border border-indigo-500/30 flex flex-col md:flex-row items-center justify-between gap-5 shadow-2xl">
-              <div className="flex items-center gap-4">
-                <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 border border-indigo-500/40 flex items-center justify-center">
-                  <ShieldCheck className="w-7 h-7 text-cyan-400" />
-                </div>
-                <div>
-                  <h4 className="text-base font-bold text-white">Buy Entire Stack ({auditedProducts.length} Items) with Single Prava Card</h4>
-                  <p className="text-xs text-slate-400">
-                    Prava card hard-capped to exact stack total (${auditedTotal.toFixed(2)}). Card auto-expires post-checkout.
-                  </p>
+            {/* CHECKOUT ACTION BAR */}
+            <div className="p-5 rounded-xl bg-[#0d0e15] border border-slate-800 flex flex-col md:flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <ShieldCheck className="w-5 h-5 text-emerald-400" />
+                <div className="text-xs">
+                  <span className="font-semibold text-slate-200 block">Buy Stack via Prava Virtual Card</span>
+                  <span className="text-slate-500">Card hard-capped to ${auditedTotal.toFixed(2)}. Expires post-checkout.</span>
                 </div>
               </div>
 
               {checkoutComplete ? (
-                <div className="flex items-center gap-2 text-cyan-300 font-bold text-sm bg-cyan-500/10 border border-cyan-400/30 px-6 py-3.5 rounded-2xl">
-                  <CheckCircle2 className="w-5 h-5 text-cyan-400" /> All {auditedProducts.length} Items Purchased & Prava Card Expired!
-                </div>
+                <span className="text-xs font-mono font-semibold text-emerald-400 flex items-center gap-1.5 bg-emerald-500/10 px-3 py-2 rounded border border-emerald-500/20">
+                  <CheckCircle2 className="w-4 h-4" /> All Checkouts Executed & Card Expired
+                </span>
               ) : (
                 <button
                   onClick={() => setIsPasskeyModalOpen(true)}
-                  className="py-4 px-7 rounded-2xl bg-gradient-to-r from-cyan-400 to-indigo-500 hover:from-cyan-300 hover:to-indigo-400 text-slate-950 font-black text-xs uppercase tracking-wider flex items-center gap-2.5 shadow-xl shadow-cyan-500/20 transition-all cursor-pointer hover:scale-105"
+                  className="py-2.5 px-4 rounded-md bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-semibold text-xs transition-colors flex items-center gap-1.5 cursor-pointer"
                 >
-                  Authorize Passkey & Buy Entire Stack <ArrowRight className="w-4 h-4 stroke-[3]" />
+                  Authorize Passkey & Checkout <ArrowRight className="w-3.5 h-3.5" />
                 </button>
               )}
             </div>

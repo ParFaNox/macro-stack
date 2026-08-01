@@ -5,41 +5,31 @@ import { ShieldCheck, Sparkles, Terminal, Cpu, ArrowRight } from "lucide-react";
 
 export function Navbar() {
   return (
-    <header className="sticky top-0 z-50 border-b border-indigo-500/20 bg-slate-950/80 backdrop-blur-2xl">
-      <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-3 group">
-          <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-cyan-400 via-indigo-500 to-purple-500 p-[1px] shadow-lg shadow-indigo-500/20 group-hover:scale-105 transition-all">
-            <div className="h-full w-full bg-slate-950 rounded-[11px] flex items-center justify-center">
-              <Sparkles className="h-5 w-5 text-cyan-400 stroke-[2.5]" />
-            </div>
+    <header className="sticky top-0 z-50 border-b border-slate-800/80 bg-[#090a0f]/80 backdrop-blur-xl">
+      <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+        <Link href="/" className="flex items-center gap-3">
+          <div className="h-8 w-8 rounded-lg bg-slate-900 border border-slate-700 flex items-center justify-center">
+            <Sparkles className="h-4 w-4 text-emerald-400 stroke-[2]" />
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="font-extrabold text-xl tracking-tight text-white">MacroStack</span>
-              <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-gradient-to-r from-cyan-500/20 to-indigo-500/20 text-cyan-300 border border-cyan-400/30">
-                PRO
-              </span>
-            </div>
+          <div className="flex items-center gap-2">
+            <span className="font-semibold text-base tracking-tight text-slate-100">MacroStack</span>
+            <span className="text-[10px] font-mono font-medium px-2 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700">
+              v2.4
+            </span>
           </div>
         </Link>
 
-        <nav className="hidden md:flex items-center gap-8 text-sm font-semibold text-slate-300">
-          <a href="#how-it-works" className="hover:text-white transition-colors">How It Works</a>
-          <a href="#roi-calculator" className="hover:text-white transition-colors">Savings Calculator</a>
-          <a href="#purity-audit" className="hover:text-white transition-colors">Purity Index</a>
-        </nav>
-
         <div className="flex items-center gap-4">
-          <div className="hidden sm:flex items-center gap-2 text-xs font-bold text-slate-300 bg-slate-900/90 border border-indigo-500/30 px-3.5 py-2 rounded-xl">
-            <ShieldCheck className="w-4 h-4 text-cyan-400" />
-            <span>Prava Protected</span>
+          <div className="flex items-center gap-2 text-xs font-mono text-slate-400 bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-md">
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+            <span>Prava Passkey Protected</span>
           </div>
 
           <a
-            href="#optimizer"
-            className="py-2.5 px-4 rounded-xl bg-gradient-to-r from-cyan-400 to-indigo-500 hover:from-cyan-300 hover:to-indigo-400 text-slate-950 font-black text-xs uppercase tracking-wider flex items-center gap-2 shadow-lg shadow-cyan-500/20 transition-all hover:scale-105"
+            href="#stack-builder"
+            className="py-1.5 px-3.5 rounded-md bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-semibold text-xs transition-colors flex items-center gap-1.5"
           >
-            Start Free Audit <ArrowRight className="w-3.5 h-3.5 stroke-[3]" />
+            Audit Stack <ArrowRight className="w-3.5 h-3.5" />
           </a>
         </div>
       </div>

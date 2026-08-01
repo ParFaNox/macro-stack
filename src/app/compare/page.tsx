@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { Navbar } from "@/components/navbar";
 import { FadeIn } from "@/components/fade-in";
 import { Footer } from "@/components/footer";
@@ -9,6 +10,8 @@ import { PasskeyModal } from "@/components/passkey-modal";
 import { AnimatedCounter } from "@/components/animated-counter";
 import { PriceComparisonChart } from "@/components/price-comparison-chart";
 import { SupplementProduct, AgentReasoningLog, PravaCardDetails } from "@/types";
+import { streamOptimizeStack } from "@/lib/agent/client";
+import { DEFAULT_BUDGET_USD, DEFAULT_STACK, STACK_STORAGE_KEY } from "@/lib/stack-store";
 import { ShieldCheck, CheckCircle2, ArrowRight, TrendingDown, BarChart3 } from "lucide-react";
 
 export default function ComparePage() {
@@ -16,66 +19,59 @@ export default function ComparePage() {
   const [isCheckoutExecuting, setIsCheckoutExecuting] = useState(false);
   const [reasoningLogs, setReasoningLogs] = useState<AgentReasoningLog[]>([]);
   const [auditedProducts, setAuditedProducts] = useState<SupplementProduct[]>([]);
+  const [auditError, setAuditError] = useState<string | null>(null);
   const [isPasskeyModalOpen, setIsPasskeyModalOpen] = useState(false);
   const [checkoutComplete, setCheckoutComplete] = useState(false);
   const [viewMode, setViewMode] = useState<"chart" | "cards">("chart");
 
   useEffect(() => {
-    // Auto-start audit on mount
-    const stackCart = [
-      "Creatine Monohydrate (500g)",
-      "L-Citrulline Malate (300g)",
-      "Whey Protein Isolate (2lb)",
-      "Beta-Alanine (200g)",
-      "Electrolytes Complex (30 servings)",
-    ];
+    // Read the stack the user built on the landing page. Falls back to a
+    // default stack so /compare is still meaningful when opened directly.
+    let stackCart = DEFAULT_STACK;
+    let budget = DEFAULT_BUDGET_USD;
+    try {
+      const stored = sessionStorage.getItem(STACK_STORAGE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed.items) && parsed.items.length > 0) stackCart = parsed.items;
+        if (typeof parsed.budgetUSD === "number") budget = parsed.budgetUSD;
+      }
+    } catch {
+      // Corrupt or unavailable storage just means we use the defaults.
+    }
 
-    const log1: AgentReasoningLog = {
-      id: "log_1", timestamp: new Date().toISOString(),
-      step: "LABEL_AUDIT", status: "INFO",
-      message: `Scanning ${stackCart.length} items across Amazon, iHerb, Bodybuilding.com...`,
+    // React 18+ runs effects twice in dev StrictMode; this guards against a
+    // duplicated audit run and duplicated log entries.
+    let cancelled = false;
+
+    (async () => {
+      try {
+        await streamOptimizeStack(
+          { targetBudgetUSD: budget, targetIngredients: stackCart },
+          {
+            onLog: (log) => {
+              if (!cancelled) setReasoningLogs((prev) => [...prev, log]);
+            },
+            onResult: (result) => {
+              if (!cancelled) setAuditedProducts(result.recommendedProducts);
+            },
+            onError: (message) => {
+              if (!cancelled) setAuditError(message);
+            },
+          },
+        );
+      } catch (err) {
+        if (!cancelled) {
+          setAuditError(err instanceof Error ? err.message : "Stack audit failed");
+        }
+      } finally {
+        if (!cancelled) setIsAuditing(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
     };
-    setReasoningLogs([log1]);
-
-    setTimeout(() => {
-      setReasoningLogs((prev) => [...prev, {
-        id: "log_2", timestamp: new Date().toISOString(),
-        step: "COST_CALCULATION", status: "INFO",
-        message: "Active cost-per-gram calculated. Subscribe & Save tiers matched.",
-      }]);
-    }, 800);
-
-    setTimeout(() => {
-      const mockResults: SupplementProduct[] = stackCart.map((item, idx) => {
-        const basePrices = [25.49, 32.99, 42.50, 19.99, 14.99];
-        const origPrices = [29.99, 39.99, 49.99, 24.99, 18.99];
-        const stores = ["iHerb Direct", "Vendor Direct", "Amazon", "Bodybuilding.com", "iHerb Direct"];
-        return {
-          id: `prod_${idx}`, brand: "Lab-Certified", productName: item,
-          imageUrl: "/supp.jpg", labelImageUrl: "/label.jpg",
-          totalPriceUSD: origPrices[idx % origPrices.length], servingsPerContainer: 60,
-          activeIngredients: [{ name: item.split("(")[0].trim(), amountPerServingGrams: 5.0, purityPercentage: 99.5 }],
-          costPerGramActiveUSD: Number((basePrices[idx % basePrices.length] / 60).toFixed(2)),
-          subscribeAndSaveDiscountPct: 15 + (idx * 2),
-          discountedPriceUSD: basePrices[idx % basePrices.length],
-          checkoutUrl: "https://example.com/checkout",
-          vendorName: stores[idx % stores.length],
-        };
-      });
-
-      setReasoningLogs((prev) => [...prev, {
-        id: "log_3", timestamp: new Date().toISOString(),
-        step: "STACK_OPTIMIZATION", status: "SUCCESS",
-        message: `${stackCart.length}-item stack audit complete.`,
-        metadata: {
-          original: `$${mockResults.reduce((a, b) => a + b.totalPriceUSD, 0).toFixed(2)}`,
-          audited: `$${mockResults.reduce((a, b) => a + b.discountedPriceUSD, 0).toFixed(2)}`,
-          saved: `$${(mockResults.reduce((a, b) => a + b.totalPriceUSD, 0) - mockResults.reduce((a, b) => a + b.discountedPriceUSD, 0)).toFixed(2)}`,
-        },
-      }]);
-      setAuditedProducts(mockResults);
-      setIsAuditing(false);
-    }, 1800);
   }, []);
 
   const handlePasskeyAuthorized = async (card: PravaCardDetails) => {
@@ -146,6 +142,24 @@ export default function ComparePage() {
                       </div>
                     ))}
                   </div>
+                </div>
+              )}
+
+              {/* AUDIT FAILED / NOTHING MATCHED */}
+              {!isAuditing && auditedProducts.length === 0 && (
+                <div className="rounded-2xl bg-[#121217] border border-rose-500/30 p-6 space-y-2">
+                  <h3 className="text-sm font-black text-white">No stack could be built</h3>
+                  <p className="text-[11px] text-[#8f8f9e] leading-relaxed">
+                    {auditError
+                      ? auditError
+                      : "None of your items matched an auditable ingredient, or the budget was too low to cover any of them. Try raising the budget cap, or use names like Creatine, L-Citrulline, Whey Protein, Beta-Alanine or Electrolytes."}
+                  </p>
+                  <Link
+                    href="/"
+                    className="inline-block text-[11px] font-bold text-cyan-300 hover:text-cyan-200 pt-1"
+                  >
+                    ← Edit your stack
+                  </Link>
                 </div>
               )}
 

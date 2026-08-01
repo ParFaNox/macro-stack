@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+
+import { DEFAULT_BUDGET_USD, DEFAULT_STACK, saveStack } from "@/lib/stack-store";
 import { Navbar } from "@/components/navbar";
 import { FadeIn } from "@/components/fade-in";
 import { Footer } from "@/components/footer";
@@ -22,13 +24,8 @@ import {
 export default function LandingPage() {
   const router = useRouter();
   const [searchInput, setSearchInput] = useState<string>("");
-  const [stackCart, setStackCart] = useState<string[]>([
-    "Creatine Monohydrate (500g)",
-    "L-Citrulline Malate (300g)",
-    "Whey Protein Isolate (2lb)",
-    "Beta-Alanine (200g)",
-    "Electrolytes Complex (30 servings)",
-  ]);
+  const [stackCart, setStackCart] = useState<string[]>(DEFAULT_STACK);
+  const [budget, setBudget] = useState<number>(DEFAULT_BUDGET_USD);
   const [activeFaq, setActiveFaq] = useState<number | null>(null);
   const [isAuditing, setIsAuditing] = useState(false);
 
@@ -47,12 +44,10 @@ export default function LandingPage() {
   const handleAuditEntireStack = async () => {
     if (stackCart.length === 0) return;
     setIsAuditing(true);
-    
-    // Simulate short delay then redirect to compare page for results
-    setTimeout(() => {
-      // In a real app we'd pass cart via state/context/URL
-      router.push("/compare");
-    }, 1000);
+
+    // Hand the stack to /compare, which runs the real audit against it.
+    saveStack({ items: stackCart, budgetUSD: budget });
+    router.push("/compare");
   };
 
   const faqs = [
@@ -138,6 +133,25 @@ export default function LandingPage() {
                   </button>
                 </div>
               ))}
+            </div>
+
+            <div className="pt-1 space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label htmlFor="budget" className="text-[11px] font-semibold text-[#8f8f9e]">
+                  Budget cap
+                </label>
+                <span className="text-[11px] font-mono font-bold text-cyan-300">${budget}</span>
+              </div>
+              <input
+                id="budget"
+                type="range"
+                min={20}
+                max={500}
+                step={10}
+                value={budget}
+                onChange={(e) => setBudget(Number(e.target.value))}
+                className="w-full accent-cyan-400 cursor-pointer"
+              />
             </div>
 
             <button onClick={handleAuditEntireStack} disabled={isAuditing || stackCart.length === 0}

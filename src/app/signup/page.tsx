@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { FadeIn } from "@/components/fade-in";
-import { Sparkles, ArrowRight } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { useState } from "react";
 
 export default function SignupPage() {

@@ -416,7 +416,19 @@ export const AGENT_TOOLS: ToolDefinition[] = [
         retailUSD: retail,
         savedUSD: Number((retail - total).toFixed(2)),
         reasoning,
-        rejected: rejected ?? [],
+        // Resolved to real names here rather than in the UI. "It rejected
+        // prava_huge_supplements_creatine_monohydrate_powder_2" is unreadable;
+        // "Huge Supplements Creatine Monohydrate Powder" is the same fact in a
+        // form a buyer can act on. Ids the agent invented resolve to nothing,
+        // so they are dropped rather than shown raw.
+        rejected: (rejected ?? [])
+          .map((r) => {
+            const entry = ctx.discovered.get(r.productId);
+            return entry
+              ? { productId: `${entry.brand} ${entry.productName}`.slice(0, 60), why: r.why }
+              : null;
+          })
+          .filter((r): r is { productId: string; why: string } => r !== null),
       };
     },
   },

@@ -28,6 +28,9 @@ function summariseResult(name: string, result: unknown): { text: string; tone: "
   if (typeof r.error === "string") return { text: r.error.slice(0, 90), tone: "bad" };
 
   if (name === "search_products") {
+    if (typeof r.alreadySearched === "string") {
+      return { text: `already searched ${r.alreadySearched}`, tone: "warn" };
+    }
     const n = Number(r.found ?? 0);
     return { text: `${n} product${n === 1 ? "" : "s"} found`, tone: n > 0 ? "ok" : "warn" };
   }
@@ -125,6 +128,20 @@ export function AgentTrace({ events, running }: { events: AgentEvent[]; running:
           const summary = result ? summariseResult(e.name, result.result) : null;
           const arg = argSummary(e.args);
 
+          // A failed call the agent then got right is self-correction, not a
+          // fault. Showing it in red next to a successful proposal made a run
+          // that worked look broken. It stays visible — watching the agent
+          // recover is the interesting part — but reads as "retried".
+          const recovered =
+            summary?.tone === "bad" &&
+            events.some(
+              (o) =>
+                o.type === "tool_result" &&
+                o.name === e.name &&
+                events.indexOf(o) > i &&
+                !(o.result as { error?: unknown })?.error,
+            );
+
           return (
             <div key={i} className="rounded-lg bg-[#08080a] border border-[#1e1e28] px-3 py-2">
               <div className="flex items-center justify-between gap-3">
@@ -147,13 +164,14 @@ export function AgentTrace({ events, running }: { events: AgentEvent[]; running:
                   className={`text-[10px] mt-1 pl-5 leading-relaxed ${
                     summary.tone === "ok"
                       ? "text-emerald-300/85"
-                      : summary.tone === "warn"
+                      : summary.tone === "warn" || recovered
                         ? "text-amber-300/85"
                         : "text-rose-300/85"
                   }`}
                 >
-                  {summary.tone === "ok" ? "✓ " : summary.tone === "warn" ? "! " : "✗ "}
+                  {summary.tone === "ok" ? "✓ " : recovered ? "↻ " : summary.tone === "warn" ? "! " : "✗ "}
                   {summary.text}
+                  {recovered && <span className="text-[#646473]"> — retried successfully</span>}
                 </p>
               )}
             </div>

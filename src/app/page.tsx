@@ -3,14 +3,13 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-import { DEFAULT_BUDGET_USD, DEFAULT_STACK, saveStack } from "@/lib/stack-store";
+import { DEFAULT_BUDGET_USD, DEFAULT_STACK, SUGGESTED_INGREDIENTS, saveStack } from "@/lib/stack-store";
+import { IngredientAutocomplete } from "@/components/ingredient-autocomplete";
 import { Navbar } from "@/components/navbar";
 import { FadeIn } from "@/components/fade-in";
 import { Footer } from "@/components/footer";
 import {
   Sparkles,
-  Search,
-  Plus,
   Trash2,
   Zap,
   ChevronDown,
@@ -23,7 +22,6 @@ import {
 
 export default function LandingPage() {
   const router = useRouter();
-  const [searchInput, setSearchInput] = useState<string>("");
   const [stackCart, setStackCart] = useState<string[]>(DEFAULT_STACK);
   const [budget, setBudget] = useState<number>(DEFAULT_BUDGET_USD);
   const [activeFaq, setActiveFaq] = useState<number | null>(null);
@@ -34,7 +32,6 @@ export default function LandingPage() {
     if (!stackCart.includes(item)) {
       setStackCart([...stackCart, item]);
     }
-    setSearchInput("");
   };
 
   const removeItemFromCart = (index: number) => {
@@ -109,17 +106,31 @@ export default function LandingPage() {
               </span>
             </div>
 
-            <form onSubmit={(e) => { e.preventDefault(); addItemToCart(searchInput); }} className="flex gap-2">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-2.5 w-3.5 h-3.5 text-[#646473]" />
-                <input type="text" placeholder="Add supplement..." value={searchInput}
-                  onChange={(e) => setSearchInput(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 rounded-lg bg-[#08080a] border border-[#22222c] text-white placeholder-[#646473] text-xs focus:outline-none focus:border-cyan-400 transition-colors font-medium" />
+            <IngredientAutocomplete onAdd={addItemToCart} existing={stackCart} />
+
+            {/* One-tap suggestions. These are the ingredient families the
+                optimizer can actually audit, so a first-time user is not left
+                guessing what the box accepts. */}
+            <div className="flex flex-wrap gap-1.5">
+              {SUGGESTED_INGREDIENTS.filter((s) => !stackCart.includes(s)).map((s) => (
+                <button
+                  key={s}
+                  onClick={() => addItemToCart(s)}
+                  className="px-2.5 py-1 rounded-full text-[10px] font-bold border border-[#22222c] bg-[#08080a] text-[#8f8f9e] hover:border-cyan-400/50 hover:text-cyan-300 transition-colors cursor-pointer"
+                >
+                  + {s}
+                </button>
+              ))}
+            </div>
+
+            {stackCart.length === 0 && (
+              <div className="rounded-xl border border-dashed border-[#22222c] p-5 text-center space-y-1">
+                <p className="text-[11px] font-bold text-white">Your stack is empty</p>
+                <p className="text-[10px] text-[#646473]">
+                  Tap a suggestion above, or type any supplement and hit Add.
+                </p>
               </div>
-              <button type="submit" className="px-3 py-2 rounded-lg bg-white hover:bg-slate-200 text-slate-950 font-bold text-xs transition-all cursor-pointer flex items-center gap-1">
-                <Plus className="w-3.5 h-3.5" /> Add
-              </button>
-            </form>
+            )}
 
             <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
               {stackCart.map((item, idx) => (

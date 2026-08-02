@@ -15,8 +15,8 @@ export function Navbar() {
 
   return (
     <header className="sticky top-0 z-50 bg-[#08080a]/90 backdrop-blur-xl border-b border-[#22222c]">
-      <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-2 group">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-4">
+        <Link href="/" className="flex items-center gap-2 group shrink-0">
           <div className="h-6 w-6 rounded-md bg-gradient-to-br from-cyan-500/20 to-blue-500/20 border border-cyan-400/30 flex items-center justify-center group-hover:scale-105 transition-transform">
             <Sparkles className="h-3 w-3 text-cyan-400 stroke-[2.5]" />
           </div>
@@ -25,12 +25,14 @@ export function Navbar() {
           </span>
         </Link>
 
-        <nav className="flex items-center gap-6 text-xs font-medium">
+        <nav className="flex items-center gap-4 sm:gap-6 text-xs font-medium shrink-0">
           {navLinks.map(({ href, label }) => (
             <Link
               key={href}
               href={href}
-              className={`transition-colors ${
+              // Hidden on narrow screens: at ~560px these wrapped and collided
+              // with the wordmark. Sign In stays visible as the primary action.
+              className={`hidden sm:inline whitespace-nowrap transition-colors ${
                 pathname === href ? "text-white" : "text-[#8f8f9e] hover:text-[#f0f0f5]"
               }`}
             >

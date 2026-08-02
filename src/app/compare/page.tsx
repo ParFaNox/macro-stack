@@ -9,10 +9,10 @@ import { AgentReasoningFeed } from "@/components/agent-reasoning-feed";
 import { PasskeyModal } from "@/components/passkey-modal";
 import { AnimatedCounter } from "@/components/animated-counter";
 import { PriceComparisonChart } from "@/components/price-comparison-chart";
-import { SupplementProduct, AgentReasoningLog, CheckoutExecutionPayload } from "@/types";
+import { SupplementProduct, AgentReasoningLog, BrandTrustSummary, CheckoutExecutionPayload } from "@/types";
 import { executeCheckout, type MintedCardClient } from "@/lib/prava/client";
 import { streamOptimizeStack } from "@/lib/agent/client";
-import { DEFAULT_BUDGET_USD, DEFAULT_STACK, STACK_STORAGE_KEY } from "@/lib/stack-store";
+import { DEFAULT_BUDGET_USD, EXAMPLE_STACK, STACK_STORAGE_KEY } from "@/lib/stack-store";
 import { ShieldCheck, CheckCircle2, ArrowRight, TrendingDown, BarChart3 } from "lucide-react";
 
 export default function ComparePage() {
@@ -25,12 +25,13 @@ export default function ComparePage() {
   const [checkoutComplete, setCheckoutComplete] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [orderIds, setOrderIds] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<"chart" | "cards">("chart");
+  const [brandTrust, setBrandTrust] = useState<Record<string, BrandTrustSummary>>({});
+  const [viewMode, setViewMode] = useState<"chart" | "cards">("cards");
 
   useEffect(() => {
     // Read the stack the user built on the landing page. Falls back to a
     // default stack so /compare is still meaningful when opened directly.
-    let stackCart = DEFAULT_STACK;
+    let stackCart = EXAMPLE_STACK;
     let budget = DEFAULT_BUDGET_USD;
     try {
       const stored = sessionStorage.getItem(STACK_STORAGE_KEY);
@@ -58,6 +59,7 @@ export default function ComparePage() {
             onResult: (result) => {
               if (cancelled) return;
               setAuditedProducts(result.recommendedProducts);
+              setBrandTrust(result.brandTrust ?? {});
 
               // Attribute the audit to the signed-in user so the profile shows
               // real history. Ignored server-side when signed out.
@@ -281,24 +283,133 @@ export default function ComparePage() {
                   {/* CHART VIEW */}
                   {viewMode === "chart" && <PriceComparisonChart products={auditedProducts} />}
 
-                  {/* CARDS VIEW */}
+                  {/* CARDS VIEW — the audited product, described properly */}
                   {viewMode === "cards" && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {auditedProducts.map((prod) => (
-                        <div key={prod.id} className="p-3.5 rounded-xl bg-[#08080a] border border-[#1e1e28] space-y-1.5">
-                          <span className="text-[10px] font-bold text-cyan-300 px-2 py-0.5 rounded bg-cyan-500/10 border border-cyan-400/30">
-                            {prod.vendorName}
-                          </span>
-                          <h4 className="text-xs font-bold text-white">{prod.productName}</h4>
-                          <div className="flex justify-between text-[11px] font-mono pt-1 text-slate-300">
-                            <span>Subscribe & Save</span>
-                            <div className="flex items-center gap-1.5">
-                              <span className="text-[#646473] line-through">${prod.totalPriceUSD.toFixed(2)}</span>
-                              <span className="text-cyan-400 font-bold">${prod.discountedPriceUSD.toFixed(2)}</span>
+                    <div className="grid grid-cols-1 gap-3">
+                      {auditedProducts.map((prod) => {
+                        const trust = brandTrust[prod.brand];
+                        const perServing = prod.discountedPriceUSD / prod.servingsPerContainer;
+                        const activeGrams = prod.activeIngredients.reduce(
+                          (sum, i) => sum + i.amountPerServingGrams * (i.purityPercentage / 100),
+                          0,
+                        );
+                        const productUrl = `/mock-merchant?product=${encodeURIComponent(
+                          prod.productName,
+                        )}&price=${prod.totalPriceUSD}&discount=${prod.subscribeAndSaveDiscountPct}`;
+
+                        return (
+                          <div
+                            key={prod.id}
+                            className="rounded-xl bg-[#08080a] border border-[#1e1e28] overflow-hidden hover:border-cyan-500/30 transition-colors"
+                          >
+                            <div className="flex gap-3.5 p-3.5">
+                              {/* The actual label the vision model read — not stock art. */}
+                              <Link
+                                href={prod.labelImageUrl}
+                                target="_blank"
+                                className="shrink-0 w-[68px] h-[86px] rounded-lg overflow-hidden bg-white border border-[#22222c] hover:border-cyan-400/50 transition-colors"
+                                title="Open the label the agent audited"
+                              >
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
+                                  src={prod.labelImageUrl}
+                                  alt={`${prod.productName} supplement facts label`}
+                                  className="w-full h-full object-cover object-top"
+                                  loading="lazy"
+                                />
+                              </Link>
+
+                              <div className="min-w-0 flex-1 space-y-1.5">
+                                <div className="flex items-start justify-between gap-3">
+                                  <div className="min-w-0">
+                                    <h4 className="text-xs font-bold text-white truncate">
+                                      {prod.productName}
+                                    </h4>
+                                    <p className="text-[10px] text-[#8f8f9e] truncate">
+                                      {prod.brand} · sold by {prod.vendorName}
+                                    </p>
+                                  </div>
+                                  <div className="text-right shrink-0">
+                                    <div className="text-[10px] text-[#646473] line-through font-mono">
+                                      ${prod.totalPriceUSD.toFixed(2)}
+                                    </div>
+                                    <div className="text-sm font-mono font-bold text-cyan-400">
+                                      ${prod.discountedPriceUSD.toFixed(2)}
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="flex flex-wrap gap-1.5 text-[9px] font-mono">
+                                  <span className="px-1.5 py-0.5 rounded bg-[#121217] border border-[#22222c] text-cyan-300">
+                                    ${prod.costPerGramActiveUSD.toFixed(4)}/g active
+                                  </span>
+                                  <span className="px-1.5 py-0.5 rounded bg-[#121217] border border-[#22222c] text-[#8f8f9e]">
+                                    {prod.servingsPerContainer} servings
+                                  </span>
+                                  <span className="px-1.5 py-0.5 rounded bg-[#121217] border border-[#22222c] text-[#8f8f9e]">
+                                    {activeGrams.toFixed(1)}g active/serving
+                                  </span>
+                                  <span className="px-1.5 py-0.5 rounded bg-[#121217] border border-[#22222c] text-[#8f8f9e]">
+                                    ${perServing.toFixed(2)}/serving
+                                  </span>
+                                  <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-400/25 text-emerald-300">
+                                    −{prod.subscribeAndSaveDiscountPct}% S&amp;S
+                                  </span>
+                                  {trust && (
+                                    <span
+                                      title={trust.verdict}
+                                      className={`px-1.5 py-0.5 rounded border ${
+                                        trust.grade <= "B"
+                                          ? "bg-emerald-500/10 border-emerald-400/25 text-emerald-300"
+                                          : trust.grade === "C"
+                                            ? "bg-amber-500/10 border-amber-400/25 text-amber-300"
+                                            : "bg-rose-500/10 border-rose-400/25 text-rose-300"
+                                      }`}
+                                    >
+                                      trust {trust.grade}
+                                    </span>
+                                  )}
+                                </div>
+
+                                <p className="text-[10px] text-[#8f8f9e] leading-relaxed line-clamp-2">
+                                  {prod.activeIngredients
+                                    .map(
+                                      (i) =>
+                                        `${i.name} ${i.amountPerServingGrams}g @ ${i.purityPercentage}% purity`,
+                                    )
+                                    .join(" · ")}
+                                </p>
+
+                                <div className="flex flex-wrap gap-3 pt-0.5 text-[10px] font-bold">
+                                  <Link
+                                    href={productUrl}
+                                    target="_blank"
+                                    className="text-cyan-300 hover:text-cyan-200"
+                                  >
+                                    View product →
+                                  </Link>
+                                  <Link
+                                    href={prod.labelImageUrl}
+                                    target="_blank"
+                                    className="text-[#8f8f9e] hover:text-white"
+                                  >
+                                    View label →
+                                  </Link>
+                                </div>
+                              </div>
                             </div>
+
+                            {trust?.signals?.length ? (
+                              <div className="px-3.5 py-2 border-t border-[#1e1e28] bg-[#0b0b0f]">
+                                <p className="text-[9px] text-[#8f8f9e] leading-relaxed">
+                                  <span className="text-[#646473]">Third-party checks: </span>
+                                  {trust.signals.slice(0, 3).join(" · ")}
+                                </p>
+                              </div>
+                            ) : null}
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
 

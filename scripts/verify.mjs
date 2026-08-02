@@ -19,6 +19,7 @@ const BASE = process.env.NEXT_PUBLIC_APP_URL?.trim() || 'http://localhost:3000';
 
 let passed = 0;
 let failed = 0;
+let skipped = 0;
 const failures = [];
 let group = '';
 
@@ -26,6 +27,11 @@ const g = (name) => {
   group = name;
   console.log(`\n${name}`);
 };
+
+function skip(label, why) {
+  skipped++;
+  console.log(`  ~ ${label}  (skipped: ${why})`);
+}
 
 function ok(label, condition, detail) {
   if (condition) {
@@ -283,6 +289,12 @@ g('Accounts');
 
 // -------------------------------------------------------------------- payments
 
+// Payment tests need a credential without a human at an approval screen, which
+// only SIMULATED mode provides. Running against SANDBOX is a legitimate config,
+// so skip rather than fail — and say so loudly.
+const pravaEnv = (await req('/api/prava/mint-card')).body?.pravaEnvironment;
+const canTestPayments = pravaEnv === 'SIMULATED';
+
 g('Passkey guardrail');
 {
   const ch = await req('/api/prava/challenge', json({ amountUSD: 45.03, merchantName: 'NutriMart (demo)' }));
@@ -298,6 +310,10 @@ g('Passkey guardrail');
     challengeId: ch.body.challengeId, userPasskeySignature: ch.body.simulatedSignature,
   }));
   ok('mints against a valid challenge', mint.status === 200);
+  if (!canTestPayments) {
+    ok('  creates a real Prava session', Boolean(mint.body.session?.sessionId),
+       `env=${pravaEnv}`);
+  }
 
   const replay = await req('/api/prava/mint-card', json({
     amountUSD: 45.03, merchantName: 'NutriMart (demo)',
@@ -332,7 +348,9 @@ g('Passkey guardrail');
 g('Checkout automation');
 {
   const card = globalThis.__card;
-  if (!card) {
+  if (!canTestPayments) {
+    skip('checkout automation', `PRAVA_ENVIRONMENT=${pravaEnv} needs a human at Prava's approval screen — run with PRAVA_SECRET_KEY= to cover this`);
+  } else if (!card) {
     ok('card available for checkout', false, 'minting failed above');
   } else {
     ok('card is capped at the approved amount', card.amountCapUSD === 45.03);
@@ -375,7 +393,9 @@ g('Checkout automation');
 g('Auto-renewal shield');
 {
   const orderId = globalThis.__orderId;
-  if (!orderId) {
+  if (!canTestPayments) {
+    skip('auto-renewal shield', 'depends on a completed checkout');
+  } else if (!orderId) {
     ok('order available', false, 'checkout failed above');
   } else {
     const renew = await req('/api/mock-merchant/renew', json({ orderId }));
@@ -414,7 +434,8 @@ g('Pages render');
 // ---------------------------------------------------------------------- report
 
 console.log(`\n${'─'.repeat(60)}`);
-console.log(`${passed} passed, ${failed} failed`);
+console.log(`${passed} passed, ${failed} failed${skipped ? `, ${skipped} skipped` : ''}`);
+if (skipped) console.log(`(prava environment: ${pravaEnv})`);
 
 if (failed > 0) {
   console.log('\nFailures:');

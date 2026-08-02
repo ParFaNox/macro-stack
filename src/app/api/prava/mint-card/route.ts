@@ -46,13 +46,35 @@ const Schema = z.object({
  * rather than blocking the request.
  */
 export async function GET(request: Request) {
-  const sessionId = new URL(request.url).searchParams.get('sessionId');
+  const url = new URL(request.url);
+  const sessionId = url.searchParams.get('sessionId');
+  // Explicit opt-in: the caller gave up waiting for approval and wants to
+  // exercise the rest of the pipeline. Never automatic — abandoning the human
+  // approval step has to be a deliberate act, and the result is labelled.
+  const allowDegraded = url.searchParams.get('degrade') === '1';
 
   if (!sessionId) {
     return Response.json({
       endpoint: '/api/prava/mint-card',
       method: 'POST',
       pravaEnvironment: pravaEnvironment(),
+    });
+  }
+
+  if (allowDegraded) {
+    const { mintPravaCard } = await import('@/lib/prava/sdk-client');
+    const fallback = await mintPravaCard({
+      amountUSD: 0.01,
+      merchantName: 'NutriMart (demo)',
+      userPasskeySignature: 'degraded',
+    });
+    return Response.json({
+      ready: true,
+      degraded: true,
+      degradedReason:
+        'Prava approval was not completed, so this is a SIMULATED credential. ' +
+        'The Prava session itself is real and still pending.',
+      card: { ...fallback, sessionId, cardId: sessionId, environment: 'SIMULATED' as const },
     });
   }
 

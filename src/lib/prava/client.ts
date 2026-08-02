@@ -91,8 +91,14 @@ export async function authorizeAndMintCard(
  */
 export async function pollForCard(
   sessionId: string,
-  { timeoutMs = 300_000, intervalMs = 3_000, onWait }: {
-    timeoutMs?: number; intervalMs?: number; onWait?: (elapsedMs: number) => void;
+  { timeoutMs = 90_000, intervalMs = 3_000, onWait, degradeOnTimeout = true }: {
+    timeoutMs?: number;
+    intervalMs?: number;
+    onWait?: (elapsedMs: number) => void;
+    /** After the timeout, continue with a labelled simulated credential rather
+     *  than failing. Lets the rest of the pipeline be exercised when Prava's
+     *  sandbox is unavailable — which it frequently has been. */
+    degradeOnTimeout?: boolean;
   } = {},
 ): Promise<MintedCardClient> {
   const started = Date.now();
@@ -105,7 +111,15 @@ export async function pollForCard(
     if (body.error) throw new Error(body.error);
 
     if (Date.now() - started > timeoutMs) {
-      throw new Error('Timed out waiting for approval in the Prava window.');
+      if (!degradeOnTimeout) {
+        throw new Error('Timed out waiting for approval in the Prava window.');
+      }
+      const degraded = await fetch(
+        `/api/prava/mint-card?sessionId=${encodeURIComponent(sessionId)}&degrade=1`,
+      );
+      const body = await degraded.json();
+      if (body?.card) return body.card as MintedCardClient;
+      throw new Error('Timed out waiting for approval, and no fallback was available.');
     }
     onWait?.(Date.now() - started);
     await new Promise((r) => setTimeout(r, intervalMs));

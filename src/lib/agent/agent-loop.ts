@@ -151,6 +151,13 @@ export async function runAgent({ goal, budgetUSD, onEvent, signal }: AgentRunOpt
       // be a loop, so the second silence ends the run.
       if (turn.toolCalls.length === 0) {
         if (nudged) {
+          // Asked twice and still no proposal. Salvage, like every other way a
+          // run can end without one — this path was the exception, and it
+          // showed up under concurrency as a run that finished after four
+          // minutes with an empty panel and no error to explain it.
+          if (ctx.discovered.size > 0) {
+            salvage(ctx, onEvent, 'the model stopped calling tools without proposing');
+          }
           onEvent({ type: 'done', iterations, toolCalls });
           return;
         }

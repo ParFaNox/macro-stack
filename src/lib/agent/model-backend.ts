@@ -49,16 +49,60 @@ export interface ModelBackend {
   addToolResults(results: Array<{ id: string; name: string; result: unknown }>): void;
 }
 
+/**
+ * The agent can run on a different provider from the vision auditor, and
+ * usually should. Vision needs a multimodal model; the agent loop needs many
+ * cheap turns with reliable tool calling. Gemini's free tier is 20 requests a
+ * minute and a single agent run needs 5-10 of them, so keeping both on one key
+ * makes the loop unusable.
+ *
+ * Set AGENT_BASE_URL / AGENT_API_KEY / AGENT_MODEL to split them. Groq is the
+ * obvious pairing: free, no card, 30 requests a minute, and real OpenAI-style
+ * tool calling rather than Gemini's thought_signature round-trip.
+ */
+export function agentBaseUrl(): string {
+  return (
+    process.env.AGENT_BASE_URL?.trim() ||
+    process.env.VISION_BASE_URL?.trim() ||
+    DEFAULT_VISION_BASE_URL
+  );
+}
+
 export function agentModelId(): string {
   return process.env.AGENT_MODEL?.trim() || visionModelId();
 }
 
+/**
+ * Keys may be a comma-separated pool. Free tiers are metered per key, so two
+ * keys is two lots of quota — and a 429 fails over to the next one instead of
+ * killing the run.
+ */
+function keyPool(): string[] {
+  const raw = process.env.AGENT_API_KEY?.trim() || process.env.VISION_API_KEY?.trim() || '';
+  return raw.split(',').map((k) => k.trim()).filter(Boolean);
+}
+
+let keyCursor = 0;
+
+export function nextKey(): string {
+  const keys = keyPool();
+  if (keys.length === 0) return '';
+  const key = keys[keyCursor % keys.length];
+  keyCursor++;
+  return key;
+}
+
+export function keyCount(): number {
+  return keyPool().length;
+}
+
 export function backendKind(): BackendKind {
-  const base = process.env.VISION_BASE_URL?.trim() ?? DEFAULT_VISION_BASE_URL;
   if (process.env.AGENT_BACKEND === 'openai' || process.env.AGENT_BACKEND === 'gemini') {
     return process.env.AGENT_BACKEND;
   }
-  return /generativelanguage\.googleapis\.com/.test(base) ? 'gemini' : 'openai';
+  // Only Gemini's own endpoint needs the native path; everything else
+  // (OpenAI, Groq, OpenRouter, Together) speaks OpenAI tool calling.
+  return /generativelanguage\.googleapis\.com/.test(agentBaseUrl()) ? 'gemini' : 'openai';
 }
 
 // --- OpenAI-style ------------------------------------------------------------
@@ -71,10 +115,7 @@ interface OpenAIMessage {
 }
 
 function createOpenAIBackend(system: string, goal: string, signal?: AbortSignal): ModelBackend {
-  const client = new OpenAI({
-    apiKey: process.env.VISION_API_KEY,
-    baseURL: process.env.VISION_BASE_URL?.trim() || DEFAULT_VISION_BASE_URL,
-  });
+  const clientFor = (key: string) => new OpenAI({ apiKey: key, baseURL: agentBaseUrl() });
 
   const messages: OpenAIMessage[] = [
     { role: 'system', content: system },
@@ -87,7 +128,7 @@ function createOpenAIBackend(system: string, goal: string, signal?: AbortSignal)
 
     async next() {
       return withRetry(async () => {
-      const completion = await client.chat.completions.create(
+      const completion = await clientFor(nextKey()).chat.completions.create(
         {
           model: agentModelId(),
           messages: messages as never,
@@ -200,8 +241,9 @@ function toGeminiSchema(schema: Record<string, unknown>): unknown {
 
 function createGeminiBackend(system: string, goal: string, signal?: AbortSignal): ModelBackend {
   const model = agentModelId();
-  const key = process.env.VISION_API_KEY;
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
+  const endpoint = () =>
+    `${agentBaseUrl().replace(/\/v1beta\/openai\/?$/, '')}/v1beta/models/${model}:generateContent?key=${nextKey()}`
+      .replace('//v1beta', '/v1beta');
 
   const tools = [
     {
@@ -223,7 +265,7 @@ function createGeminiBackend(system: string, goal: string, signal?: AbortSignal)
 
     async next() {
       return withRetry(async () => {
-      const res = await fetch(url, {
+      const res = await fetch(endpoint(), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

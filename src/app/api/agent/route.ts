@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
-import { runAgent, agentModelId, type AgentEvent } from '@/lib/agent/agent-loop';
+import { runAgent, type AgentEvent } from '@/lib/agent/agent-loop';
+import { agentBaseUrl, agentModelId, backendKind, keyCount } from '@/lib/agent/model-backend';
 import { AGENT_TOOLS } from '@/lib/agent/tools';
 
 /**
@@ -32,6 +33,9 @@ export async function GET() {
     endpoint: '/api/agent',
     method: 'POST',
     model: agentModelId(),
+    provider: new URL(agentBaseUrl()).host,
+    toolCallingStyle: backendKind(),
+    apiKeysInPool: keyCount(),
     tools: AGENT_TOOLS.map((t) => ({ name: t.name, description: t.description.slice(0, 110) })),
     example: { goal: 'Build me a strength stack — creatine and whey', budgetUSD: 120 },
   });

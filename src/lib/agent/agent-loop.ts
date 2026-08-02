@@ -1,7 +1,7 @@
 import type { SupplementProduct } from '@/types';
 import type { CatalogEntry } from '@/types/agent';
 
-import { agentModelId, backendKind, createBackend } from './model-backend';
+import { createBackend } from './model-backend';
 import { TOOLS_BY_NAME, type ToolContext } from './tools';
 
 /**
@@ -55,8 +55,6 @@ the user can follow your reasoning — one or two sentences, not an essay.
 
 If an ingredient has no products, say so plainly and continue with the rest
 rather than inventing something.`;
-
-export { agentModelId, backendKind };
 
 export type AgentEvent =
   | { type: 'thinking'; text: string }

@@ -164,6 +164,10 @@ export async function buildAuthorizationUrl(): Promise<string> {
   url.searchParams.set('state', state);
   url.searchParams.set('code_challenge', challenge);
   url.searchParams.set('code_challenge_method', 'S256');
+  // RFC 8707 resource indicator. MCP requires it and rejects the request with
+  // `invalid_target — resource must equal the canonical MCP URI` without it.
+  // The canonical value is published at /.well-known/oauth-protected-resource.
+  url.searchParams.set('resource', pravaMcpUrl());
 
   return url.toString();
 }
@@ -189,6 +193,8 @@ export async function exchangeCode(code: string, state: string): Promise<void> {
       redirect_uri: oauthRedirectUri(),
       client_id: clientId,
       code_verifier: pending.verifier,
+      // Must match the authorize request, or the token endpoint rejects it.
+      resource: pravaMcpUrl(),
     }),
   });
 
@@ -217,6 +223,7 @@ async function refresh(): Promise<string | null> {
       grant_type: 'refresh_token',
       refresh_token: store.refreshToken,
       client_id: store.clientId,
+      resource: pravaMcpUrl(),
     }),
   });
   if (!res.ok) return null;

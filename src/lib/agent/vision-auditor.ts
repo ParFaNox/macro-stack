@@ -247,9 +247,18 @@ export function clearAuditCache(): void {
 }
 
 /** How many labels already have a cached live reading. */
+/**
+ * Counts only entries for the model currently configured. The cache is keyed by
+ * model, so once two models have been warmed the raw size exceeds the number of
+ * labels — the UI was reporting "30/15 labels cached", which is nonsense.
+ */
 export function auditCacheStats(): { cached: number; live: number } {
   loadCacheFromDisk();
-  const values = [...auditCache.values()];
+  const prefix = `${visionModelId()}::`;
+  const values = [...auditCache.entries()]
+    .filter(([key]) => key.startsWith(prefix))
+    .map(([, value]) => value);
+
   return {
     cached: values.length,
     live: values.filter((v) => v.source === 'LIVE_VISION_MODEL').length,

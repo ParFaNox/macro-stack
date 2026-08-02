@@ -9,7 +9,7 @@ import { AgentReasoningFeed } from "@/components/agent-reasoning-feed";
 import { PasskeyModal } from "@/components/passkey-modal";
 import { AnimatedCounter } from "@/components/animated-counter";
 import { PriceComparisonChart } from "@/components/price-comparison-chart";
-import { SupplementProduct, AgentReasoningLog, PravaCardDetails } from "@/types";
+import { SupplementProduct, AgentReasoningLog, PravaCardDetails, CheckoutResult } from "@/types";
 import { streamOptimizeStack } from "@/lib/agent/client";
 import { DEFAULT_BUDGET_USD, DEFAULT_STACK, STACK_STORAGE_KEY } from "@/lib/stack-store";
 import { ShieldCheck, CheckCircle2, ArrowRight, TrendingDown, BarChart3 } from "lucide-react";
@@ -79,22 +79,59 @@ export default function ComparePage() {
     setIsCheckoutExecuting(true);
     const totalCost = auditedProducts.reduce((a, b) => a + b.discountedPriceUSD, 0);
     setReasoningLogs((prev) => [...prev, {
-      id: "log_4", timestamp: new Date().toISOString(),
+      id: `log_${Date.now()}_mint`, timestamp: new Date().toISOString(),
       step: "CARD_MINTING", status: "SUCCESS",
       message: `Prava card ****${card.cardNumber.slice(-4)} minted. Cap: $${totalCost.toFixed(2)}`,
       metadata: { status: card.status, singleUse: card.isSingleUse },
     }]);
 
-    setTimeout(() => {
+    try {
+      const res = await fetch("/api/checkout/execute", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          products: auditedProducts,
+          // This app has no accounts yet (see TEAMMATE-3-GUIDE.md reality
+          // check) — a fixed demo address stands in until real capture exists.
+          shippingAddress: {
+            fullName: "MacroStack Demo Buyer",
+            streetAddress: "123 Innovation Way",
+            city: "West Lafayette",
+            state: "IN",
+            zipCode: "47906",
+            email: "demo@macrostack.app",
+          },
+          cardDetails: card,
+        }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => null);
+        throw new Error(err?.error ?? "Checkout automation failed");
+      }
+
+      const result: CheckoutResult = await res.json();
+
       setReasoningLogs((prev) => [...prev, {
-        id: "log_5", timestamp: new Date().toISOString(),
-        step: "CHECKOUT_AUTOMATION", status: "SUCCESS",
-        message: `All checkouts placed. Card expired.`,
-        metadata: { orderId: "ORD-9921", status: "Complete" },
+        id: `log_${Date.now()}_checkout`, timestamp: new Date().toISOString(),
+        step: "CHECKOUT_AUTOMATION",
+        status: result.success ? "SUCCESS" : "ERROR",
+        message: result.success
+          ? `All checkouts placed. Card ${result.cardStatusAfterCheckout === "EXPIRED_SAFELY" ? "expired." : "status unknown."}`
+          : "Checkout automation failed.",
+        metadata: { orderId: result.orderId, status: result.cardStatusAfterCheckout },
       }]);
+
+      setCheckoutComplete(result.success);
+    } catch (err) {
+      setReasoningLogs((prev) => [...prev, {
+        id: `log_${Date.now()}_error`, timestamp: new Date().toISOString(),
+        step: "CHECKOUT_AUTOMATION", status: "ERROR",
+        message: err instanceof Error ? err.message : "Checkout automation failed",
+      }]);
+    } finally {
       setIsCheckoutExecuting(false);
-      setCheckoutComplete(true);
-    }, 1600);
+    }
   };
 
   const originalTotal = auditedProducts.reduce((acc, p) => acc + p.totalPriceUSD, 0);

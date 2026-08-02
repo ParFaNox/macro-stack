@@ -37,6 +37,11 @@ export interface BrandTrustSummary {
 
 export interface StackOptimizationResult {
   recommendedProducts: SupplementProduct[];
+  /** How many candidate products were actually compared. Shown in the UI so
+   *  "best value" is scoped to what was searched, not implied market-wide. */
+  productsCompared?: number;
+  /** Where those candidates came from. */
+  productSource?: 'PRAVA_SHOP_SEARCH' | 'LIVE_RETAIL_SEARCH' | 'SEED_CATALOG';
   /** Brand -> third-party trust verdict, keyed by SupplementProduct.brand.
    *  Absent when no trust signal was available. */
   brandTrust?: Record<string, BrandTrustSummary>;

@@ -11,7 +11,7 @@ export function Footer() {
         </div>
 
         <div className="flex items-center gap-6 text-[11px] text-[#646473]">
-          <span>100% Independent Price Aggregator</span>
+          <span>Independent · no affiliate deals</span>
           <span className="text-[#333340]">·</span>
           <span>© {new Date().getFullYear()} MacroStack AI</span>
         </div>

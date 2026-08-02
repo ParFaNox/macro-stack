@@ -48,9 +48,9 @@ export default function LandingPage() {
   };
 
   const faqs = [
-    { q: "How does MacroStack find the cheapest price?", a: "Our AI audits nutrition labels across stores, calculates true cost per active gram (ignoring filler), and selects the lowest real price." },
+    { q: "How does MacroStack find the best value?", a: "A vision model reads each product's supplement facts panel, we compute the true cost per gram of active ingredient (so filler and proprietary blends can't hide underdosing), weight it by third-party verification, and pick the best value that fits your budget. Today it compares a built-in demo catalog; connect a live product source and the same maths runs over real merchant listings." },
     { q: "What does the Prava Virtual Card do?", a: "It selects Subscribe & Save to unlock 15-20% discounts, then issues a single-use card that auto-expires post-checkout — blocking future auto-renewals." },
-    { q: "Any hidden fees?", a: "Zero. You pay the exact merchant price. MacroStack is 100% independent." },
+    { q: "Any hidden fees?", a: "None. You pay the merchant price. We take no cut and have no affiliate deals." },
   ];
 
   return (

@@ -26,6 +26,8 @@ export default function ComparePage() {
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [orderIds, setOrderIds] = useState<string | null>(null);
   const [brandTrust, setBrandTrust] = useState<Record<string, BrandTrustSummary>>({});
+  const [compared, setCompared] = useState(0);
+  const [productSource, setProductSource] = useState<string>("SEED_CATALOG");
   const [viewMode, setViewMode] = useState<"chart" | "cards">("cards");
 
   useEffect(() => {
@@ -60,6 +62,8 @@ export default function ComparePage() {
               if (cancelled) return;
               setAuditedProducts(result.recommendedProducts);
               setBrandTrust(result.brandTrust ?? {});
+              setCompared(result.productsCompared ?? 0);
+              setProductSource(result.productSource ?? "SEED_CATALOG");
 
               // Attribute the audit to the signed-in user so the profile shows
               // real history. Ignored server-side when signed out.
@@ -253,7 +257,9 @@ export default function ComparePage() {
                         <span className="text-sm font-black text-white">
                           You save <AnimatedCounter target={netSavings} prefix="$" className="text-cyan-400" /> ({savingsPercent}%)
                         </span>
-                        <span className="text-[10px] text-[#8f8f9e] block">vs. full retail across all stores</span>
+                        <span className="text-[10px] text-[#8f8f9e] block">
+                          vs. list price of the {compared} products compared
+                        </span>
                       </div>
                     </div>
                     <div className="text-right">
@@ -267,7 +273,19 @@ export default function ComparePage() {
 
                   {/* VIEW TOGGLE */}
                   <div className="flex items-center justify-between border-b border-[#22222c] pb-3">
-                    <h3 className="text-lg font-black text-white">Cheapest Matches</h3>
+                    <div>
+                      <h3 className="text-lg font-black text-white">Best value found</h3>
+                      <p className="text-[10px] text-[#8f8f9e] mt-0.5">
+                        {compared} products compared ·{" "}
+                        {productSource === "PRAVA_SHOP_SEARCH" ? (
+                          <span className="text-emerald-300">live merchants via Prava</span>
+                        ) : productSource === "LIVE_RETAIL_SEARCH" ? (
+                          <span className="text-emerald-300">live retailer listings</span>
+                        ) : (
+                          <span className="text-amber-300/80">built-in demo catalog, not live prices</span>
+                        )}
+                      </p>
+                    </div>
                     <div className="flex items-center gap-1 bg-[#08080a] rounded-lg p-0.5 border border-[#22222c]">
                       <button onClick={() => setViewMode("chart")}
                         className={`px-3 py-1 rounded-md text-[10px] font-bold cursor-pointer transition-colors ${viewMode === "chart" ? "bg-[#22222c] text-white" : "text-[#8f8f9e] hover:text-white"}`}>

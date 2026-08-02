@@ -482,6 +482,12 @@ export async function optimizeStack(
     },
   );
 
+  // Surfaced so the UI can state exactly what was compared, instead of
+  // implying the whole market was searched.
+  const comparedCount = ranked.reduce((sum, g) => sum + g.candidates.length, 0);
+  const productSource =
+    searched.find((r) => r.sourceMode !== 'SEED_CATALOG')?.sourceMode ?? 'SEED_CATALOG';
+
   const brandTrust: Record<string, import('@/types').BrandTrustSummary> = {};
   for (const c of selected) {
     if (c.trust.source !== 'SENSO_VERIFIED') continue;
@@ -496,6 +502,8 @@ export async function optimizeStack(
 
   return {
     recommendedProducts,
+    productsCompared: comparedCount,
+    productSource,
     ...(Object.keys(brandTrust).length ? { brandTrust } : {}),
     totalOriginalPriceUSD,
     totalDiscountedPriceUSD,

@@ -69,10 +69,70 @@ Hit **Approve & buy**. This is the part the hackathon is actually about:
 Step 5 is the point. Show it: after the order confirms, the page offers to
 simulate the merchant charging you again next month. It fails:
 
-> card ••••2906 is single-use and was retired after the original purchase.
+> card ••••9801 is single-use and was retired after the original purchase.
 
 An agent that can spend money is only safe if the amount it can spend is
 bounded by something the agent does not control. Here that bound is the card.
+
+### Sandbox cards — read this before you demo
+
+Prava's approval page asks for a test card. **Each card can only be taken
+through the flow once or twice**; after a couple of failed attempts it stops
+issuing credentials and every later attempt dies at
+`FETCH_AGENTIC_CREDS_ERROR — "Visa 400, Fetching cryptogram failed"`, which
+reads like a server fault and is not one. If you see that error, **switch
+cards** before you debug anything else.
+
+All cards are `4622 9431 2313 ****`, expiry `12/27`, OTP `456789`.
+Full list: https://docs.prava.space/api-reference/test-cards
+
+| Last 4 | CVV | State |
+|---|---|---|
+| 7862 | 938 | **SPENT** — burned during debugging, do not reuse |
+| 7789 | 757 | one of these completed the verified run below |
+| 7797 | 640 | |
+| 7805 | 304 | |
+| 7847 | 698 | unused |
+| 7854 | 799 | unused |
+| 7870 | 966 | unused |
+| 7888 | 408 | unused |
+| 7896 | 499 | unused |
+| 7904 | 890 | unused |
+| 7912 | 999 | unused |
+
+Budget them: a live demo burns one per full run. Everything except the real
+card still works when they run out — the flow degrades to a SIMULATED card with
+the cap still enforced and labelled as simulated wherever it appears.
+
+### The verified real-card run
+
+Completed against Prava's sandbox on 2 Aug 2026 — nothing simulated anywhere in
+this chain:
+
+```
+1. AGENT DECIDES     PEScience TruCreatine+ Powder, $24.95
+2. PRAVA SESSION     ses_01KZ1WKMKGZD676K7E0WRPGD5C
+3. PASSKEY + ENROLL  identity verified, card enrolled
+4. REAL CARD ISSUED  network token 432312…9801, dynamic CVV, exp 12/2027
+5. CHECKOUT          success · $24.95 · EXPIRED_SAFELY
+6. RENEWAL           DECLINED — single-use, retired after purchase
+7. PRAVA STATUS      session completed · txn completed
+```
+
+That is Prava's full five-step production checklist. Quote the session id when
+requesting production access.
+
+**Three things had to be real before this worked**, and each failed with an
+error that pointed somewhere unhelpful:
+
+- `user_email` must be routable. `demo@macrostack.test` — a reserved TLD — was
+  rejected by Visa's attestation with an opaque 400, and no passkey prompt ever
+  appeared.
+- `merchant_url` must be a real https origin. `example.com` (also reserved)
+  passed the passkey step and then failed at credential scoping.
+- The test card must not be exhausted. See above.
+
+Sandbox does not mean the inputs can be fictional.
 
 ## Step 3 — The fallback (30s, optional)
 

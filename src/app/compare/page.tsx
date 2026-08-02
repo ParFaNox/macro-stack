@@ -293,9 +293,19 @@ export default function ComparePage() {
                           (sum, i) => sum + i.amountPerServingGrams * (i.purityPercentage / 100),
                           0,
                         );
-                        const productUrl = `/mock-merchant?product=${encodeURIComponent(
-                          prod.productName,
-                        )}&price=${prod.totalPriceUSD}&discount=${prod.subscribeAndSaveDiscountPct}`;
+                        // Seed products have a placeholder domain that does not
+                        // resolve, so linking to it as "the merchant's page"
+                        // would be a lie. Only a real listing URL earns that
+                        // label; otherwise we point at our own demo store and
+                        // say so.
+                        const hasRealListing =
+                          /^https?:\/\//.test(prod.checkoutUrl) &&
+                          !prod.checkoutUrl.includes("example-merchant.test");
+                        const productUrl = hasRealListing
+                          ? prod.checkoutUrl
+                          : `/mock-merchant?product=${encodeURIComponent(
+                              prod.productName,
+                            )}&price=${prod.totalPriceUSD}&discount=${prod.subscribeAndSaveDiscountPct}`;
 
                         return (
                           <div
@@ -304,20 +314,31 @@ export default function ComparePage() {
                           >
                             <div className="flex gap-3.5 p-3.5">
                               {/* The actual label the vision model read — not stock art. */}
-                              <Link
-                                href={prod.labelImageUrl}
-                                target="_blank"
-                                className="shrink-0 w-[68px] h-[86px] rounded-lg overflow-hidden bg-white border border-[#22222c] hover:border-cyan-400/50 transition-colors"
-                                title="Open the label the agent audited"
-                              >
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img
-                                  src={prod.labelImageUrl}
-                                  alt={`${prod.productName} supplement facts label`}
-                                  className="w-full h-full object-cover object-top"
-                                  loading="lazy"
-                                />
-                              </Link>
+                              <div className="shrink-0 flex flex-col gap-1.5">
+                                <div className="w-[72px] h-[90px] rounded-lg overflow-hidden bg-[#0b0b0f] border border-[#22222c]">
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img
+                                    src={prod.imageUrl}
+                                    alt={prod.productName}
+                                    className="w-full h-full object-contain"
+                                    loading="lazy"
+                                  />
+                                </div>
+                                <Link
+                                  href={prod.labelImageUrl}
+                                  target="_blank"
+                                  className="w-[72px] h-[28px] rounded overflow-hidden bg-white border border-[#22222c] hover:border-cyan-400/50 transition-colors"
+                                  title="Open the supplement facts panel the agent audited"
+                                >
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img
+                                    src={prod.labelImageUrl}
+                                    alt={`${prod.productName} supplement facts label`}
+                                    className="w-full h-full object-cover object-top"
+                                    loading="lazy"
+                                  />
+                                </Link>
+                              </div>
 
                               <div className="min-w-0 flex-1 space-y-1.5">
                                 <div className="flex items-start justify-between gap-3">
@@ -386,8 +407,16 @@ export default function ComparePage() {
                                     target="_blank"
                                     className="text-cyan-300 hover:text-cyan-200"
                                   >
-                                    View product →
+                                    {hasRealListing ? `View on ${prod.vendorName} →` : "View on demo store →"}
                                   </Link>
+                                  {!hasRealListing && (
+                                    <span
+                                      className="text-[9px] text-amber-300/70 font-normal"
+                                      title="This product is from the built-in catalog. Connect a live product source for real listings."
+                                    >
+                                      simulated listing
+                                    </span>
+                                  )}
                                   <Link
                                     href={prod.labelImageUrl}
                                     target="_blank"

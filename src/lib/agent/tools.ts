@@ -51,6 +51,40 @@ export interface ToolDefinition {
  */
 const MAX_SEARCHES_PER_RUN = 4;
 
+/**
+ * Explains an id the agent does not actually have.
+ *
+ * The old message said "call search_products first", which was wrong whenever a
+ * search HAD run — and that is exactly when this fires. Observed: the model
+ * batched audits into the same turn as the search, so it had no ids yet and
+ * invented plausible-looking ones ("product_id_from_creatine_search"), then
+ * looped on the same bad advice for the whole run.
+ *
+ * So: name the mistake, and hand back the ids that genuinely exist. A model can
+ * correct itself from a list; it cannot correct itself from a instruction that
+ * does not apply.
+ */
+function unknownProduct(productId: unknown, ctx: ToolContext): Record<string, unknown> {
+  const id = String(productId);
+  const available = [...ctx.discovered.keys()];
+
+  if (available.length === 0) {
+    return { error: `No products discovered yet. Call search_products before using "${id}".` };
+  }
+
+  const invented = /^(product|item)[_-]?id|from[_-]search|placeholder|example/i.test(id);
+
+  return {
+    error:
+      (invented
+        ? `"${id}" is a placeholder, not a real id — you used it before the search results came back. `
+        : `Unknown productId "${id}". `) +
+      'Use one of the ids below, exactly as written. Do not call audit or cost tools in the ' +
+      'same turn as a search: you cannot know the ids until the search result arrives.',
+    availableProductIds: available.slice(0, 10),
+  };
+}
+
 /** Turns an internal product id into something a person recognises. */
 function label(productId: unknown, ctx: ToolContext): string {
   const entry = ctx.discovered.get(String(productId));
@@ -180,7 +214,7 @@ export const AGENT_TOOLS: ToolDefinition[] = [
     async run(args, ctx) {
       const { productId } = args as unknown as { productId: string };
       const entry = ctx.discovered.get(productId);
-      if (!entry) return { error: `Unknown productId "${productId}". Call search_products first.` };
+      if (!entry) return unknownProduct(productId, ctx);
 
       const audit = await auditNutritionLabel(entry.labelImageUrl);
       return {
@@ -239,7 +273,7 @@ export const AGENT_TOOLS: ToolDefinition[] = [
     async run(args, ctx) {
       const { productId } = args as unknown as { productId: string };
       const entry = ctx.discovered.get(productId);
-      if (!entry) return { error: `Unknown productId "${productId}". Call search_products first.` };
+      if (!entry) return unknownProduct(productId, ctx);
 
       const audit = await auditNutritionLabel(entry.labelImageUrl);
       const product = toSupplementProduct(entry, audit);
@@ -317,7 +351,12 @@ export const AGENT_TOOLS: ToolDefinition[] = [
       }
 
       if (missing.length) {
-        return { error: `Unknown product ids: ${missing.join(', ')}. Use ids from search_products.` };
+        return {
+          error:
+            `Unknown product ids: ${missing.join(', ')}. Propose using ids exactly as ` +
+            'search_products returned them — not names, and not ids you constructed.',
+          availableProductIds: [...ctx.discovered.keys()].slice(0, 10),
+        };
       }
 
       const total = Number(products.reduce((s, p) => s + p.discountedPriceUSD, 0).toFixed(2));

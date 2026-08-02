@@ -287,6 +287,18 @@ async function withRetry<T>(fn: () => Promise<T>, attempts = 5): Promise<T> {
     } catch (error) {
       lastError = error;
       const message = error instanceof Error ? error.message : String(error);
+
+      // "Failed to call a function" is the provider rejecting the model's own
+      // malformed tool call — sampling noise, not a bad request from us. It is
+      // usually gone on the next attempt, and the alternative is ending a run
+      // that was one turn from proposing. Retry a couple of times, then give up
+      // rather than looping on a genuinely stuck model.
+      if (/failed to call a function|failed_generation|tool_use_failed/i.test(message)) {
+        if (i >= 2) throw error;
+        await new Promise((r) => setTimeout(r, 800));
+        continue;
+      }
+
       if (!/429|quota|rate/i.test(message)) throw error;
 
       // A daily cap does not reset within any reasonable wait. Switch model

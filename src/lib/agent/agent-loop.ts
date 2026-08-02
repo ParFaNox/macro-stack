@@ -2,6 +2,8 @@ import type { SupplementProduct } from '@/types';
 import type { CatalogEntry } from '@/types/agent';
 
 import { createBackend } from './model-backend';
+import { calculateCostPerGram, toSupplementProduct } from './optimizer-engine';
+import { mockAuditNutritionLabel } from './vision-auditor';
 import { TOOLS_BY_NAME, type ToolContext } from './tools';
 
 /**
@@ -19,6 +21,12 @@ import { TOOLS_BY_NAME, type ToolContext } from './tools';
  *  - the budget is enforced in `propose_stack`, not trusted to the model
  *  - no tool can spend money; buying stays behind the human approval gate
  */
+
+/**
+ * Argument values the model fabricated instead of reading from a tool result.
+ * They look like schema field names, never like a real brand or product.
+ */
+const PLACEHOLDER = /^(brand|product|item)[_-]|_from_[a-z]+_search|placeholder|example_|your_/i;
 
 const MAX_ITERATIONS = 12;
 const MAX_TOOL_CALLS = 30;
@@ -47,10 +55,16 @@ How to work:
    cheap product from a brand with an FDA warning letter is not a bargain.
 5. propose_stack once, at the end, with your reasoning and what you rejected.
 
-Be efficient with model turns — call several tools in ONE turn whenever they do
-not depend on each other. Search every ingredient at once; audit several
-candidates at once. Only wait for a result when your next choice genuinely
-depends on it.
+Be efficient with model turns — call several tools in ONE turn when they do not
+depend on each other. Search every ingredient at once. Audit several candidates
+at once.
+
+But NEVER call audit_supplement_label, calculate_true_cost or propose_stack in
+the same turn as a search. Those take a productId, and product ids only exist
+after a search result comes back. If you have not seen an id in a tool result,
+you do not have it — do not guess one, do not construct one, and do not write a
+placeholder like "product_id_from_creatine_search". Search first, read the ids
+it returns, then use them on your next turn.
 
 You have a limited number of tool calls, so spend them on the shortlist, not
 on every product. A good run is: two searches, four audits, four costings, two
@@ -99,6 +113,8 @@ export async function runAgent({ goal, budgetUSD, onEvent, signal }: AgentRunOpt
   let iterations = 0;
   let toolCalls = 0;
   let nudged = false;
+  /** Calls rejected for naming a product that does not exist. */
+  let skipped = 0;
 
   try {
     while (iterations < MAX_ITERATIONS) {
@@ -131,7 +147,63 @@ export async function runAgent({ goal, budgetUSD, onEvent, signal }: AgentRunOpt
       const results: Array<{ id: string; name: string; result: unknown }> = [];
       let proposed = false;
 
-      for (const call of turn.toolCalls) {
+      // Searches run before anything else in the turn.
+      //
+      // Weaker models batch the whole plan into one turn — search, audit, cost,
+      // propose — inventing ids like "product_id_from_creatine_search[0]"
+      // because the search has not returned yet. Ordering searches first means
+      // a batched turn still populates `discovered`, so the calls that follow
+      // it in that same turn can resolve real ids instead of all failing.
+      const ordered = [...turn.toolCalls].sort(
+        (a, b) => Number(b.name === 'search_products') - Number(a.name === 'search_products'),
+      );
+
+      for (const call of ordered) {
+        // A call naming a product we have never seen is rejected without being
+        // executed and without spending budget. Otherwise one confused turn
+        // burns the whole allowance on calls that cannot succeed, and stuffs
+        // the transcript with identical errors until the request is too large
+        // to send — which is exactly how a run was dying.
+        // Same story for brand names. "brand_from_creatine_search_1" was
+        // reaching the trust lookup, which dutifully reported grade D
+        // (unverified) — a real-looking answer about a brand that does not
+        // exist, which is worse than an error.
+        const brand = (call.args as { brand?: unknown }).brand;
+        if (typeof brand === 'string' && PLACEHOLDER.test(brand)) {
+          skipped++;
+          results.push({
+            id: call.id,
+            name: call.name,
+            result: {
+              error:
+                `"${brand}" is a placeholder, not a brand. Use a brand exactly as ` +
+                'search_products returned it.',
+              availableBrands: [...new Set([...ctx.discovered.values()].map((e) => e.brand))].slice(0, 8),
+            },
+          });
+          continue;
+        }
+
+        const wanted = (call.args as { productId?: unknown }).productId;
+        if (typeof wanted === 'string' && !ctx.discovered.has(wanted)) {
+          skipped++;
+          results.push({
+            id: call.id,
+            name: call.name,
+            result:
+              skipped === 1
+                ? {
+                    error:
+                      `"${wanted}" is not a real product id. Ids come from search_products ` +
+                      'results — never construct or guess one. Call the tool again using an ' +
+                      'id from the list below.',
+                    availableProductIds: [...ctx.discovered.keys()].slice(0, 10),
+                  }
+                : { error: `"${wanted}" is not a real product id — see the list above.` },
+          });
+          continue;
+        }
+
         if (++toolCalls > MAX_TOOL_CALLS) {
           onEvent({
             type: 'error',
@@ -208,6 +280,19 @@ export async function runAgent({ goal, budgetUSD, onEvent, signal }: AgentRunOpt
     onEvent({ type: 'done', iterations, toolCalls });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
+
+    // The model died, but its research did not. If it had already found real
+    // products, finish the job deterministically rather than handing the user a
+    // provider stack trace — the ranking is the same arithmetic the agent's own
+    // costing tool runs, so the answer is the one it was heading towards.
+    //
+    // Labelled honestly: the UI says the model dropped out and code finished.
+    // Passing this off as the agent's own choice would be the dishonest move.
+    if (ctx.discovered.size > 0 && salvage(ctx, onEvent, message)) {
+      onEvent({ type: 'done', iterations, toolCalls });
+      return;
+    }
+
     onEvent({
       type: 'error',
       message: /429|quota|rate/i.test(message)
@@ -217,4 +302,64 @@ export async function runAgent({ goal, budgetUSD, onEvent, signal }: AgentRunOpt
     });
     onEvent({ type: 'done', iterations, toolCalls });
   }
+}
+
+/**
+ * Best in-budget stack from whatever the agent managed to discover.
+ *
+ * One product per ingredient family, cheapest per active gram first, skipping
+ * anything that would breach the budget. Returns false when nothing fits, so
+ * the caller can report the original failure instead.
+ */
+function salvage(
+  ctx: ToolContext,
+  onEvent: (e: AgentEvent) => void,
+  why: string,
+): boolean {
+  const byFamily = new Map<string, CatalogEntry>();
+
+  for (const entry of ctx.discovered.values()) {
+    const best = byFamily.get(entry.ingredientFamily);
+    if (!best || calculateCostPerGram(entry) < calculateCostPerGram(best)) {
+      byFamily.set(entry.ingredientFamily, entry);
+    }
+  }
+
+  const picked: SupplementProduct[] = [];
+  let total = 0;
+
+  for (const entry of [...byFamily.values()].sort(
+    (a, b) => calculateCostPerGram(a) - calculateCostPerGram(b),
+  )) {
+    const product = toSupplementProduct(entry, mockAuditNutritionLabel(entry.labelImageUrl));
+    if (total + product.discountedPriceUSD > ctx.budgetUSD) continue;
+    picked.push(product);
+    total += product.discountedPriceUSD;
+  }
+
+  if (picked.length === 0) return false;
+
+  const retail = Number(picked.reduce((s, p) => s + p.totalPriceUSD, 0).toFixed(2));
+
+  onEvent({
+    type: 'error',
+    message:
+      `The model dropped out mid-run (${why.slice(0, 90)}). Ranking its ${ctx.discovered.size} ` +
+      'discovered products in code instead — same cost-per-active-gram maths, no model involved.',
+  });
+
+  onEvent({
+    type: 'proposal',
+    products: picked,
+    totalUSD: Number(total.toFixed(2)),
+    retailUSD: retail,
+    savedUSD: Number((retail - total).toFixed(2)),
+    reasoning:
+      'Completed without the model. These are the cheapest products per gram of active ' +
+      'ingredient, one per category, that fit the budget — computed from the real prices ' +
+      'and serving counts the agent had already retrieved.',
+    rejected: [],
+  });
+
+  return true;
 }

@@ -91,7 +91,8 @@ export async function authorizeAndMintCard(
  */
 export async function pollForCard(
   sessionId: string,
-  { timeoutMs = 90_000, intervalMs = 3_000, onWait, degradeOnTimeout = true }: {
+  { timeoutMs = 90_000, intervalMs = 3_000, onWait, degradeOnTimeout = true, amountUSD = 0 }: {
+    amountUSD?: number;
     timeoutMs?: number;
     intervalMs?: number;
     onWait?: (elapsedMs: number) => void;
@@ -104,7 +105,16 @@ export async function pollForCard(
   const started = Date.now();
 
   for (;;) {
-    const res = await fetch(`/api/prava/mint-card?sessionId=${encodeURIComponent(sessionId)}`);
+    // The server does the waiting (and the degrading), so a suspended tab
+    // cannot strand the flow. The client still loops so it can report progress.
+    const remaining = Math.max(0, Math.ceil((timeoutMs - (Date.now() - started)) / 1000));
+    const wait = degradeOnTimeout ? Math.min(remaining, 25) : 0;
+
+    const res = await fetch(
+      `/api/prava/mint-card?sessionId=${encodeURIComponent(sessionId)}` +
+        (wait > 0 ? `&wait=${wait}` : '') +
+        (amountUSD > 0 ? `&amount=${amountUSD}` : ''),
+    );
     const body = await res.json();
 
     if (body.ready && body.card) return body.card as MintedCardClient;

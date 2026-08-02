@@ -96,6 +96,7 @@ export function PasskeyModal({ isOpen, onClose, products, totalAmountUSD, onAuth
       }
 
       const approved = await pollForCard(session.sessionId, {
+        amountUSD: Number(totalAmountUSD.toFixed(2)),
         onWait: (ms) =>
           setNotice(
             `Waiting for approval in the Prava window… (${Math.round(ms / 1000)}s)  ` +

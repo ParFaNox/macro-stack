@@ -282,6 +282,39 @@ export async function revokeSession(sessionId: string): Promise<void> {
   await pravaFetch(`/sessions/${sessionId}/revoke`, { method: 'POST' });
 }
 
+/**
+ * Builds a clearly-labelled simulated credential locally.
+ *
+ * Deliberately does NOT go through `mintPravaCard`: in SANDBOX that would
+ * create a second real Prava session and then block for its default two-minute
+ * approval window, so the "fast degrade" path took longer than the thing it was
+ * meant to escape. Nothing here touches the network.
+ */
+export function simulatedCard(
+  sessionId: string,
+  amountUSD: number,
+  merchantName: string,
+): MintedCard {
+  const suffix = crypto.randomInt(0, 10_000).toString().padStart(4, '0');
+
+  return {
+    cardId: sessionId,
+    sessionId,
+    txnRefId: `sim_tli_${crypto.randomUUID().slice(0, 8)}`,
+    cardNumber: `462294312313${suffix}`,
+    expiryMonth: '12',
+    expiryYear: '27',
+    cvv: '757',
+    cardHolderName: 'MacroStack Agent',
+    billingZip: '94105',
+    isSingleUse: true,
+    status: 'ACTIVE',
+    environment: 'SIMULATED',
+    amountCapUSD: amountUSD,
+    merchantName,
+  };
+}
+
 // --- Convenience: the whole mint in one call ---------------------------------
 
 /**

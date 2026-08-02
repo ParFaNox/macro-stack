@@ -6,6 +6,7 @@ import {
   defaultMerchantUrl,
   getPaymentCredentials,
   pravaEnvironment,
+  simulatedCard,
 } from '@/lib/prava/sdk-client';
 import { verifyPasskeyAuthorization } from '@/lib/prava/passkey-verifier';
 
@@ -52,6 +53,13 @@ export async function GET(request: Request) {
   // exercise the rest of the pipeline. Never automatic — abandoning the human
   // approval step has to be a deliberate act, and the result is labelled.
   const allowDegraded = url.searchParams.get('degrade') === '1';
+  // Seconds the SERVER should wait for approval before giving up. Doing the
+  // waiting here rather than in the browser means a backgrounded or stalled tab
+  // cannot strand the flow — the previous client-side poll simply stopped when
+  // the tab was suspended, and the run hung forever.
+  const waitSeconds = Math.min(Number(url.searchParams.get('wait') ?? 0) || 0, 240);
+  // Carried through so a degraded card is still capped at the approved amount.
+  const degradeAmountUSD = Number(url.searchParams.get('amount') ?? 0) || 0.01;
 
   if (!sessionId) {
     return Response.json({
@@ -62,24 +70,21 @@ export async function GET(request: Request) {
   }
 
   if (allowDegraded) {
-    const { mintPravaCard } = await import('@/lib/prava/sdk-client');
-    const fallback = await mintPravaCard({
-      amountUSD: 0.01,
-      merchantName: 'NutriMart (demo)',
-      userPasskeySignature: 'degraded',
-    });
     return Response.json({
       ready: true,
       degraded: true,
       degradedReason:
         'Prava approval was not completed, so this is a SIMULATED credential. ' +
         'The Prava session itself is real and still pending.',
-      card: { ...fallback, sessionId, cardId: sessionId, environment: 'SIMULATED' as const },
+      card: simulatedCard(sessionId, degradeAmountUSD, 'NutriMart (demo)'),
     });
   }
 
   try {
-    const creds = await getPaymentCredentials(sessionId, { timeoutMs: 0, intervalMs: 0 });
+    const creds = await getPaymentCredentials(sessionId, {
+      timeoutMs: waitSeconds * 1000,
+      intervalMs: waitSeconds > 0 ? 2500 : 0,
+    });
     return Response.json({
       ready: true,
       card: {
@@ -102,8 +107,20 @@ export async function GET(request: Request) {
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
 
-    // A timeout here just means the user hasn't finished approving yet.
+    // A timeout means the user has not finished approving. When the caller
+    // asked us to wait, that wait is over, so degrade rather than leaving them
+    // polling forever.
     if (/Timed out/.test(message)) {
+      if (waitSeconds > 0 && process.env.PRAVA_FALLBACK_ON_FAILURE !== 'false') {
+        return Response.json({
+          ready: true,
+          degraded: true,
+          degradedReason:
+            `Approval was not completed within ${waitSeconds}s, so this is a SIMULATED ` +
+            'credential. The Prava session itself is real and still pending.',
+          card: simulatedCard(sessionId, degradeAmountUSD, 'NutriMart (demo)'),
+        });
+      }
       return Response.json({ ready: false, status: 'awaiting_user_approval' });
     }
 

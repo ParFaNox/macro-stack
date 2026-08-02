@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { DEFAULT_BUDGET_USD, DEFAULT_STACK, SUGGESTED_INGREDIENTS, saveStack } from "@/lib/stack-store";
 import { IngredientAutocomplete } from "@/components/ingredient-autocomplete";
 import { Navbar } from "@/components/navbar";
+import { AgentConsole } from "@/components/agent-console";
 import { FadeIn } from "@/components/fade-in";
 import { Footer } from "@/components/footer";
 import {
@@ -79,9 +80,9 @@ export default function LandingPage() {
         {/* 3-STEP PIPELINE */}
         <FadeIn className="w-full grid grid-cols-1 md:grid-cols-3 gap-3 max-w-4xl mx-auto" delay={100}>
           {[
-            { icon: Layers, color: "text-cyan-400", label: "Build Stack", desc: "Add 4-5 supplements" },
-            { icon: Award, color: "text-blue-400", label: "Cost Audit", desc: "GPT-4o scans labels" },
-            { icon: Shield, color: "text-indigo-400", label: "Prava Card", desc: "Auto-expires after use" },
+            { icon: Layers, color: "text-cyan-400", label: "Agent shops", desc: "Real merchants, live prices" },
+            { icon: Award, color: "text-blue-400", label: "Cost audit", desc: "Per gram of actual active" },
+            { icon: Shield, color: "text-indigo-400", label: "Prava card", desc: "Single-use, capped, expires" },
           ].map(({ icon: Icon, color, label, desc }, i) => (
             <div key={i} className="p-3 rounded-xl bg-[#121217] border border-[#22222c] flex items-center gap-3">
               <Icon className={`w-4 h-4 ${color} shrink-0`} />
@@ -93,8 +94,21 @@ export default function LandingPage() {
           ))}
         </FadeIn>
 
+        {/* THE AGENT — the product, so it goes first. */}
+        <FadeIn className="w-full" delay={150}>
+          <AgentConsole compact />
+        </FadeIn>
+
+        <div id="stack-builder" className="w-full max-w-2xl mx-auto flex items-center gap-3 pt-2 scroll-mt-20">
+          <span className="h-px flex-1 bg-[#22222c]" />
+          <span className="text-[10px] font-mono uppercase tracking-wider text-[#4a4a58]">
+            or pick the ingredients yourself
+          </span>
+          <span className="h-px flex-1 bg-[#22222c]" />
+        </div>
+
         {/* STACK BUILDER */}
-        <FadeIn className="w-full max-w-2xl mx-auto" delay={150}>
+        <FadeIn className="w-full max-w-2xl mx-auto scroll-mt-20" delay={200}>
           <div className="rounded-2xl bg-[#121217] border border-[#22222c] p-5 space-y-4 shadow-2xl">
             <div className="flex items-center justify-between pb-3 border-b border-[#22222c]">
               <div>

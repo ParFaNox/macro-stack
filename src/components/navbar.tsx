@@ -12,7 +12,7 @@ export function Navbar() {
   // meant a first-time visitor never found the one thing worth seeing.
   const navLinks = [
     { href: "/agent", label: "AI Agent", primary: true },
-    { href: "/", label: "Stack Builder" },
+    { href: "/#stack-builder", label: "Stack Builder" },
     { href: "/compare", label: "Compare" },
     { href: "/setup", label: "Status" },
     { href: "/profile", label: "Profile" },

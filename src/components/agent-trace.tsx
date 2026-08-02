@@ -94,9 +94,9 @@ export function AgentTrace({ events, running }: { events: AgentEvent[]; running:
         </span>
       </div>
 
-      <div className="max-h-[560px] overflow-y-auto p-4 space-y-2.5">
+      <div className="max-h-[560px] min-h-[180px] overflow-y-auto overscroll-contain p-4 space-y-2.5">
         {visible.length === 0 && (
-          <p className="text-[11px] text-[#4a4a58] text-center py-10 leading-relaxed">
+          <p className="text-[11px] text-[#4a4a58] text-center py-8 leading-relaxed">
             Tell the agent what you want.
             <br />
             Every tool it chooses to call will show up here.
@@ -143,7 +143,7 @@ export function AgentTrace({ events, running }: { events: AgentEvent[]; running:
             );
 
           return (
-            <div key={i} className="rounded-lg bg-[#08080a] border border-[#1e1e28] px-3 py-2">
+            <div key={i} className="rounded-lg bg-[#08080a] border border-[#1e1e28] px-3 py-2 hover:border-[#2a2a38] transition-colors">
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2 min-w-0">
                   <Wrench className="w-3 h-3 text-[#646473] shrink-0" />

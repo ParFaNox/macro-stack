@@ -11,7 +11,9 @@
     "save-label-cache": "node scripts/save-label-cache.mjs",
     "ingest-trust": "node scripts/ingest-trust.mjs",
     "save-trust-cache": "node scripts/save-trust-cache.mjs",
-    "warm-trust": "node scripts/warm-trust.mjs"
+    "warm-trust": "node scripts/warm-trust.mjs",
+    "prava:doctor": "node scripts/prava-doctor.mjs",
+    "verify": "node scripts/verify.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.30.0",

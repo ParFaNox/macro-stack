@@ -79,10 +79,33 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
+
     // A timeout here just means the user hasn't finished approving yet.
     if (/Timed out/.test(message)) {
       return Response.json({ ready: false, status: 'awaiting_user_approval' });
     }
+
+    // Prava's sandbox provisioning is intermittently unavailable, and several
+    // teams are currently blocked on it. A payments outage upstream should not
+    // take the whole demo down — degrade to a clearly-labelled simulated
+    // credential and carry the real session id, so what actually happened stays
+    // visible. Set PRAVA_FALLBACK_ON_FAILURE=false to fail hard instead.
+    if (process.env.PRAVA_FALLBACK_ON_FAILURE !== 'false') {
+      const { mintPravaCard } = await import('@/lib/prava/sdk-client');
+      const fallback = await mintPravaCard({
+        amountUSD: 0.01,
+        merchantName: 'NutriMart (demo)',
+        userPasskeySignature: 'degraded',
+      });
+
+      return Response.json({
+        ready: true,
+        degraded: true,
+        degradedReason: message,
+        card: { ...fallback, sessionId, cardId: sessionId, environment: 'SIMULATED' as const },
+      });
+    }
+
     return Response.json({ ready: false, error: message }, { status: 502 });
   }
 }

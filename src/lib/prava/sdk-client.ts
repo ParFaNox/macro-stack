@@ -1,3 +1,5 @@
+import crypto from 'node:crypto';
+
 import type { PravaCardDetails, PravaCardRequest } from '@/types';
 
 /**
@@ -171,6 +173,8 @@ interface PaymentResultResponse {
   transactions?: Array<{
     txn_id: string;
     status: string;
+    /** Populated when provisioning fails — the actual diagnosis. */
+    error?: { code?: string; message?: string };
     line_items?: Array<{
       txn_ref_id: string;
       merchant_name: string;
@@ -219,7 +223,22 @@ export async function getPaymentCredentials(
     }
 
     if (res.status === 'failed') {
-      throw new Error(`Prava session ${sessionId} failed before issuing credentials`);
+      // Prava reports *why* on the transaction. Swallowing it and throwing a
+      // generic message turned a diagnosable PROVISION_ERROR into a silent
+      // two-minute timeout, so surface the code and message verbatim.
+      const failed = res.transactions?.find((t) => t.error) ?? res.transactions?.[0];
+      const code = failed?.error?.code;
+      const detail = failed?.error?.message;
+
+      throw new Error(
+        code
+          ? `Prava session ${sessionId} failed: ${code}${detail ? ` — ${detail}` : ''}` +
+            (code === 'PROVISION_ERROR'
+              ? '. Provisioning is rejected when merchant_details.url is not a reachable https ' +
+                'origin, or when the card is not the sandbox card Prava issued you by email.'
+              : '')
+          : `Prava session ${sessionId} failed before issuing credentials`,
+      );
     }
     if (Date.now() > deadline) {
       throw new Error(
@@ -294,12 +313,18 @@ export async function mintPravaCard(
   });
 
   if (env === 'SIMULATED') {
+    // A fresh number per issuance, because that is what "single-use" means —
+    // real Prava mints a new network token per session. Reusing one constant
+    // made every simulated card collide with the previous one, so a retired
+    // credential blocked the next unrelated checkout.
+    const suffix = crypto.randomInt(0, 10_000).toString().padStart(4, '0');
+
     return {
       cardId: session.sessionId,
       sessionId: session.sessionId,
       txnRefId: `sim_tli_${crypto.randomUUID().slice(0, 8)}`,
-      // Prava's published sandbox test card, so the shape is realistic.
-      cardNumber: '4622943123137789',
+      // Keeps Prava's published sandbox BIN so the shape stays realistic.
+      cardNumber: `462294312313${suffix}`,
       expiryMonth: '12',
       expiryYear: '27',
       cvv: '757',

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ShieldCheck, Fingerprint, Lock, CheckCircle } from "lucide-react";
 import { SupplementProduct } from "@/types";
 import { authorizeAndMintCard, pollForCard, type MintedCardClient } from "@/lib/prava/client";
@@ -18,6 +18,25 @@ export function PasskeyModal({ isOpen, onClose, products, totalAmountUSD, onAuth
   const [isSuccess, setIsSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  // Drives the copy. Claiming "Passkey Verified" in simulated mode contradicts
+  // the warning shown underneath it, so the wording follows the real mode.
+  const [pravaEnv, setPravaEnv] = useState<string>("");
+
+  useEffect(() => {
+    if (!isOpen) return;
+    let cancelled = false;
+    fetch("/api/prava/mint-card")
+      .then((r) => r.json())
+      .then((d) => {
+        if (!cancelled) setPravaEnv(d.pravaEnvironment ?? "");
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen]);
+
+  const isSimulated = pravaEnv === "SIMULATED";
 
   if (!isOpen) return null;
 
@@ -29,6 +48,14 @@ export function PasskeyModal({ isOpen, onClose, products, totalAmountUSD, onAuth
   const handlePasskeyAuth = async () => {
     setIsAuthenticating(true);
     setError(null);
+
+    // Open the popup synchronously, inside the click handler. Opening it after
+    // the await gets blocked by popup blockers because the browser no longer
+    // considers it user-initiated — which would silently break the real Prava
+    // approval step. Navigated once the session exists; closed if not needed.
+    const approvalWindow = !isSimulated
+      ? window.open("about:blank", "prava-approval", "width=460,height=760")
+      : null;
 
     try {
       const { card, session, passkeyMode, simulatedWarning } = await authorizeAndMintCard(
@@ -44,6 +71,7 @@ export function PasskeyModal({ isOpen, onClose, products, totalAmountUSD, onAuth
       if (passkeyMode === "SIMULATED" && simulatedWarning) setNotice(simulatedWarning);
 
       if (card) {
+        approvalWindow?.close();
         setIsSuccess(true);
         onAuthorized(card);
         return;
@@ -54,10 +82,18 @@ export function PasskeyModal({ isOpen, onClose, products, totalAmountUSD, onAuth
       // Prava issues the credential only after the user approves on their own
       // hosted surface. Open it and wait — never try to route around it.
       setNotice(
-        "Complete card approval in the Prava window, then this will continue automatically. " +
-          "Sandbox test card 4622 9431 2313 7789 · CVV 757 · exp 12/27 · OTP 456789.",
+        "Complete card approval in the Prava window, then this continues automatically. " +
+          "Use the sandbox card Prava emailed you (or one from their test-cards doc) · OTP 456789.",
       );
-      window.open(session.iframeUrl, "prava-approval", "width=460,height=720");
+
+      if (approvalWindow && !approvalWindow.closed) {
+        approvalWindow.location.href = session.iframeUrl;
+      } else {
+        // Blocked anyway — surface the link rather than stalling silently.
+        setNotice(
+          `Popup blocked. Open this to approve, then this continues automatically: ${session.iframeUrl}`,
+        );
+      }
 
       const approved = await pollForCard(session.sessionId, {
         onWait: (ms) =>
@@ -71,6 +107,7 @@ export function PasskeyModal({ isOpen, onClose, products, totalAmountUSD, onAuth
       setIsSuccess(true);
       onAuthorized(approved);
     } catch (e) {
+      approvalWindow?.close();
       setError(e instanceof Error ? e.message : "Authorization failed");
     } finally {
       setIsAuthenticating(false);
@@ -87,7 +124,9 @@ export function PasskeyModal({ isOpen, onClose, products, totalAmountUSD, onAuth
             <Fingerprint className="w-6 h-6 text-emerald-400" />
           </div>
           <div>
-            <h3 className="text-lg font-bold text-white">Prava Passkey Authorization</h3>
+            <h3 className="text-lg font-bold text-white">
+              {isSimulated ? "Authorize Purchase (Simulated)" : "Prava Passkey Authorization"}
+            </h3>
             <p className="text-xs text-slate-400">Cryptographic approval for single-use virtual card</p>
           </div>
         </div>
@@ -112,7 +151,9 @@ export function PasskeyModal({ isOpen, onClose, products, totalAmountUSD, onAuth
         {isSuccess ? (
           <div className="py-8 text-center space-y-3">
             <CheckCircle className="w-12 h-12 text-emerald-400 mx-auto animate-bounce" />
-            <h4 className="text-base font-bold text-white">Passkey Verified & Card Minted!</h4>
+            <h4 className="text-base font-bold text-white">
+                {isSimulated ? "Authorization recorded · card minted" : "Passkey verified · card minted"}
+              </h4>
             <p className="text-xs text-slate-400">Executing Playwright Subscribe & Save checkout automation...</p>
           </div>
         ) : (
@@ -124,11 +165,13 @@ export function PasskeyModal({ isOpen, onClose, products, totalAmountUSD, onAuth
             >
               {isAuthenticating ? (
                 <>
-                  <Lock className="w-4 h-4 animate-spin" /> Verifying Passkey...
+                  <Lock className="w-4 h-4 animate-spin" />{" "}
+                  {isSimulated ? "Recording authorization…" : "Waiting for Prava approval…"}
                 </>
               ) : (
                 <>
-                  <Fingerprint className="w-4 h-4 stroke-[2.5]" /> Approve & Mint Prava Card
+                  <Fingerprint className="w-4 h-4 stroke-[2.5]" />{" "}
+                  {isSimulated ? "Approve (simulated) & mint card" : "Approve with Prava & mint card"}
                 </>
               )}
             </button>

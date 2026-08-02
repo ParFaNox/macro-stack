@@ -57,8 +57,35 @@ export function pravaUserEmail(): string {
   return process.env.PRAVA_USER_EMAIL?.trim() || 'demo@macrostack.ai';
 }
 
+/**
+ * Merchant URL sent to Prava, and on to Visa.
+ *
+ * Must be a real, resolvable https origin. Two reserved domains have now been
+ * rejected here for the same underlying reason: http://localhost:3000 gave
+ * PROVISION_ERROR 403, and https://nutrimart-demo.example.com — `example.com`
+ * is reserved by RFC 2606 — got as far as passkey verification and then failed
+ * with FETCH_AGENTIC_CREDS_ERROR, "Visa 400, Fetching cryptogram failed".
+ *
+ * Visa is issuing a credential scoped to a merchant, so the merchant has to be
+ * one that could actually exist. Callers should pass the store the agent really
+ * chose; this is only the fallback for flows with no merchant in hand.
+ */
 export function defaultMerchantUrl(): string {
-  return process.env.PRAVA_MERCHANT_URL?.trim() || 'https://nutrimart-demo.example.com';
+  return process.env.PRAVA_MERCHANT_URL?.trim() || 'https://www.pescience.com';
+}
+
+/**
+ * Turns a vendor domain from a search result into an origin Visa will accept.
+ * Returns undefined when there is nothing usable, so the caller falls back
+ * rather than sending something malformed.
+ */
+export function merchantUrlFor(vendor: string | undefined): string | undefined {
+  if (!vendor) return undefined;
+  const host = vendor.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+  if (!/^[a-z0-9.-]+\.[a-z]{2,}$/.test(host)) return undefined;
+  // Reserved TLDs never resolve and are rejected downstream.
+  if (/\.(test|example|invalid|localhost)$/.test(host) || host.endsWith('.example.com')) return undefined;
+  return `https://${host.replace(/\.myshopify\.com$/, '.com')}`;
 }
 
 function pravaBase(): string {

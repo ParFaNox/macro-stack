@@ -58,14 +58,20 @@ export function PasskeyModal({ isOpen, onClose, products, totalAmountUSD, onAuth
       : null;
 
     try {
+      // Name the store the agent actually chose. Visa scopes the credential to
+      // a merchant, so "NutriMart (demo)" at a reserved domain was rejected
+      // with FETCH_AGENTIC_CREDS_ERROR after the passkey had already passed.
+      const vendor = products[0]?.vendorName;
+
       const { card, session, passkeyMode, simulatedWarning } = await authorizeAndMintCard(
         Number(totalAmountUSD.toFixed(2)),
-        "NutriMart (demo)",
+        vendor ? `${products[0].brand} · ${vendor}` : "NutriMart (demo)",
         products.map((p) => ({
           description: p.productName,
           unitPrice: Number(p.discountedPriceUSD.toFixed(2)),
           quantity: 1,
         })),
+        vendor,
       );
 
       if (passkeyMode === "SIMULATED" && simulatedWarning) setNotice(simulatedWarning);

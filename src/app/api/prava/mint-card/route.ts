@@ -4,6 +4,7 @@ import { createLog } from '@/lib/agent/logger';
 import {
   createPaymentSession,
   pravaUserEmail,
+  merchantUrlFor,
   defaultMerchantUrl,
   getPaymentCredentials,
   pravaEnvironment,
@@ -27,6 +28,8 @@ export const dynamic = 'force-dynamic';
 const Schema = z.object({
   amountUSD: z.number().positive(),
   merchantName: z.string().min(1),
+  /** Domain of the store the agent actually chose, e.g. "pescience.com". */
+  merchantVendor: z.string().optional(),
   challengeId: z.string().min(1),
   userPasskeySignature: z.string().min(1),
   products: z
@@ -159,7 +162,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const { amountUSD, merchantName, challengeId, userPasskeySignature, products } = parsed.data;
+  const { amountUSD, merchantName, merchantVendor, challengeId, userPasskeySignature, products } = parsed.data;
 
   const verification = verifyPasskeyAuthorization(challengeId, userPasskeySignature, {
     amountUSD,
@@ -182,7 +185,9 @@ export async function POST(request: Request) {
       userEmail: pravaUserEmail(),
       totalAmountUSD: amountUSD,
       merchantName,
-      merchantUrl: defaultMerchantUrl(),
+      // The store the agent picked, when it named one. Visa scopes the
+      // credential to a merchant, so a real one beats a placeholder.
+      merchantUrl: merchantUrlFor(merchantVendor) ?? defaultMerchantUrl(),
       products: products ?? [
         { description: 'MacroStack supplement stack', unitPrice: amountUSD, quantity: 1 },
       ],

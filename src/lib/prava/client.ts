@@ -46,6 +46,8 @@ export async function authorizeAndMintCard(
   amountUSD: number,
   merchantName: string,
   products?: Array<{ description: string; unitPrice: number; quantity: number }>,
+  /** Store domain from the agent's pick, so Visa scopes the credential to a real merchant. */
+  merchantVendor?: string,
 ): Promise<AuthorizeResult> {
   const chRes = await fetch('/api/prava/challenge', {
     method: 'POST',
@@ -68,6 +70,7 @@ export async function authorizeAndMintCard(
     body: JSON.stringify({
       amountUSD,
       merchantName,
+      merchantVendor,
       challengeId: challenge.challengeId,
       userPasskeySignature: challenge.simulatedSignature,
       products,

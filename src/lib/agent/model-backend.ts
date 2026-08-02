@@ -166,6 +166,36 @@ export function compactToolResult(result: unknown): string {
   return `${json.slice(0, MAX_TOOL_RESULT_CHARS)}… [truncated — ask for fewer items if you need more detail]`;
 }
 
+/**
+ * How many recent tool results stay in full.
+ *
+ * Everything older is replaced by a one-line stub. This is the difference
+ * between a run that finishes and one that crawls: the whole transcript is
+ * resent on EVERY turn, so on llama-3.1-8b's 6,000 tokens/minute a run with 30
+ * discovered products spent most of its wall-clock time sitting in rate-limit
+ * backoff — 269 of 304 seconds were waiting on the model while the tools
+ * themselves took 35.
+ *
+ * Six is chosen so the last couple of turns survive intact, which is what the
+ * model actually reasons over. Older results are not lost information: product
+ * ids live in `discovered` on the server, and the stub says what was there so
+ * the model knows to search again rather than assuming it never happened.
+ */
+const KEEP_FULL_TOOL_RESULTS = 6;
+
+function pruneTranscript(messages: OpenAIMessage[]): void {
+  const toolIndexes = messages
+    .map((m, i) => (m.role === 'tool' ? i : -1))
+    .filter((i) => i >= 0);
+
+  for (const i of toolIndexes.slice(0, -KEEP_FULL_TOOL_RESULTS)) {
+    const message = messages[i];
+    if (message.content && message.content.length > 120) {
+      message.content = '[earlier result trimmed to save context — ask again if you need it]';
+    }
+  }
+}
+
 // --- OpenAI-style ------------------------------------------------------------
 
 interface OpenAIMessage {
@@ -248,6 +278,7 @@ function createOpenAIBackend(system: string, goal: string, signal?: AbortSignal)
           content: compactToolResult(r.result),
         });
       }
+      pruneTranscript(messages);
     },
 
     addUserMessage(text) {

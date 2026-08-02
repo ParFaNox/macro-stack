@@ -157,6 +157,25 @@ export const AGENT_TOOLS: ToolDefinition[] = [
     summarise: (a) => `Searching for ${a.ingredient}`,
     async run(args, ctx) {
       const { ingredient } = args as unknown as { ingredient: string };
+
+      // The ceiling is checked BEFORE the search, not after.
+      //
+      // It used to run the search, add every result to `discovered`, and only
+      // then refuse — so a run that asked for eight ingredients still paid for
+      // eight merchant round-trips and still grew to 44 candidates, which is
+      // what pushed the transcript past the provider's request-size limit. The
+      // refusal was honest and completely ineffective.
+      if (ctx.searched.size >= MAX_SEARCHES_PER_RUN) {
+        return {
+          error:
+            `Search limit reached (${MAX_SEARCHES_PER_RUN} per run) — this search was not ` +
+            `run. You already have ${ctx.discovered.size} candidates across ` +
+            `${[...ctx.searched].join(', ')}. Pick from those: audit the cheapest, then ` +
+            'call propose_stack.',
+          candidateIds: [...ctx.discovered.keys()].slice(0, 12),
+        };
+      }
+
       const result = await searchProducts(ingredient);
 
       for (const entry of result.entries) ctx.discovered.set(entry.id, entry);
@@ -165,23 +184,7 @@ export const AGENT_TOOLS: ToolDefinition[] = [
       // a run spent 11 of its 12 turns rephrasing the same two searches
       // ("electrolyte powder", "electrolyte drink mix", "LMNT Recharge") and
       // never proposed anything.
-      //
-      // Deduping by family is not enough on its own, because a rephrase that
-      // matches no family looks new every time. So there is also a hard ceiling
-      // on searches per run: past it, the tool refuses and says what to do
-      // instead. A guardrail that always converges beats a prompt that usually
-      // does.
       const family = result.entries[0]?.ingredientFamily ?? ingredient.toLowerCase();
-
-      if (ctx.searched.size >= MAX_SEARCHES_PER_RUN && !ctx.searched.has(family)) {
-        return {
-          error:
-            `Search limit reached (${MAX_SEARCHES_PER_RUN} per run). You have ` +
-            `${ctx.discovered.size} candidate products already. Stop searching: audit them, ` +
-            'price them with calculate_true_cost, and call propose_stack with the best of them.',
-          candidateIds: [...ctx.discovered.keys()].slice(0, 12),
-        };
-      }
 
       if (ctx.searched.has(family)) {
         return {

@@ -209,14 +209,26 @@ export default function AgentPage() {
             {running ? "Agent is working…" : "Run agent"}
           </button>
 
-          {error && (
-            <p className="text-[11px] text-rose-300 bg-rose-500/10 border border-rose-500/30 rounded-lg p-3 leading-relaxed">
-              {error}{" "}
-              <Link href="/compare" className="font-bold underline">
-                Use the deterministic pipeline instead
-              </Link>
-            </p>
-          )}
+          {/*
+            A recovered run is not a failed one. When the model drops out but we
+            still produce a stack from its research, red text over a perfectly
+            good $103.66 proposal reads as "this is broken" — so it is styled as
+            a notice, and the offer to leave for /compare is dropped, because
+            there is already an answer on screen.
+          */}
+          {error &&
+            (proposal ? (
+              <p className="text-[11px] text-amber-200/90 bg-amber-500/10 border border-amber-500/25 rounded-lg p-3 leading-relaxed">
+                {error}
+              </p>
+            ) : (
+              <p className="text-[11px] text-rose-300 bg-rose-500/10 border border-rose-500/30 rounded-lg p-3 leading-relaxed">
+                {error}{" "}
+                <Link href="/compare" className="font-bold underline">
+                  Use the deterministic pipeline instead
+                </Link>
+              </p>
+            ))}
         </section>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">

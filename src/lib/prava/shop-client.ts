@@ -19,6 +19,12 @@ import { isLinked, walletPost } from './agent-link';
  * supplement-facts panel — which is the thing our auditor needs to read.
  */
 
+/** A merchant search a user is waiting on. Past this it is a hang, not slowness. */
+const SEARCH_TIMEOUT_MS = 20_000;
+
+/** Total time all enrichment calls may share. */
+const ENRICH_BUDGET_MS = 12_000;
+
 export interface PravaShopHit {
   title: string;
   price?: string;
@@ -95,12 +101,13 @@ async function enrich(
   productId: string,
   merchant: string,
   title: string,
+  budgetMs: number,
 ): Promise<{ description?: string; labelImage?: string; servings?: number; price?: number }> {
   try {
     const res = await walletPost<ProductResponse>(
       '/v1/wallet/shop/product',
       { product_id: productId, merchant },
-      20_000,
+      Math.min(budgetMs, 8_000),
     );
     const product = res.data?.product;
     if (!product) return {};
@@ -139,12 +146,22 @@ async function enrich(
  * round-trip, and the agent audits a shortlist, not the whole result set.
  */
 export async function pravaShopSearch(query: string, limit = 10): Promise<PravaShopHit[]> {
-  const res = await walletPost<SearchResponse>('/v1/wallet/shop/search', {
-    query,
-    limit: Math.min(limit, 20),
-  });
+  const res = await walletPost<SearchResponse>(
+    '/v1/wallet/shop/search',
+    { query, limit: Math.min(limit, 20) },
+    SEARCH_TIMEOUT_MS,
+  );
 
   const rows = (res.data?.results ?? []).filter((r) => r.title);
+
+  // Enrichment gets its own deadline for the batch, not just per call.
+  //
+  // A search for "caffeine" took 306 SECONDS in front of a user: the search
+  // itself returned quickly, then several enrichment calls each crawled toward
+  // their individual timeout. Enrichment is a bonus — better product images and
+  // an exact serving count — so it is never worth stalling a run for. Past the
+  // deadline, the hits go through unenriched.
+  const deadline = Date.now() + ENRICH_BUDGET_MS;
 
   const enriched = await Promise.all(
     rows.slice(0, limit).map(async (r, i) => {
@@ -152,8 +169,8 @@ export async function pravaShopSearch(query: string, limit = 10): Promise<PravaS
       const title = r.title ?? '';
 
       const extra =
-        i < 4 && r.product_id && merchant
-          ? await enrich(r.product_id, merchant, title)
+        i < 4 && r.product_id && merchant && Date.now() < deadline
+          ? await enrich(r.product_id, merchant, title, deadline - Date.now())
           : {};
 
       return {

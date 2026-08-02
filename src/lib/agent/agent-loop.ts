@@ -125,6 +125,21 @@ export async function runAgent({ goal, budgetUSD, onEvent, signal }: AgentRunOpt
       if (signal?.aborted) throw new Error('Cancelled');
       iterations++;
 
+      // Running out of turns is predictable, so say so before it happens.
+      //
+      // A wide goal ("creatine, beta-alanine, caffeine, citrulline, BCAAs,
+      // glutamine, arginine, nitric oxide") had the agent research carefully
+      // for twelve turns and then hit the ceiling with nothing proposed. It was
+      // not stuck — it simply never budgeted for the deadline it could not see.
+      if (iterations === MAX_ITERATIONS - 2 && !nudged) {
+        nudged = true;
+        backend.addUserMessage(
+          'You have two turns left. Stop researching and call propose_stack now with the ' +
+            'best products you have, whatever you have learned so far. An imperfect stack ' +
+            'is worth far more than no stack.',
+        );
+      }
+
       const turn = await backend.next();
 
       if (turn.text) onEvent({ type: 'thinking', text: turn.text });
@@ -275,6 +290,17 @@ export async function runAgent({ goal, budgetUSD, onEvent, signal }: AgentRunOpt
       // A rejected proposal (over budget, unknown ids) stays in the transcript
       // so the agent can read the reason and correct itself.
       backend.addToolResults(results);
+    }
+
+    // Out of turns, but the research is still good. Same salvage as a crashed
+    // model: rank what it actually found rather than showing a bare limit
+    // message over an empty panel.
+    if (
+      ctx.discovered.size > 0 &&
+      salvage(ctx, onEvent, `reached the ${MAX_ITERATIONS}-step limit`)
+    ) {
+      onEvent({ type: 'done', iterations, toolCalls });
+      return;
     }
 
     onEvent({

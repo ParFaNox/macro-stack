@@ -85,6 +85,52 @@ function unknownProduct(productId: unknown, ctx: ToolContext): Record<string, un
   };
 }
 
+/**
+ * Attaches the brand's trust grade to each candidate, server-side.
+ *
+ * Previously the agent had to call check_brand_trust once per brand to learn
+ * this, which is four extra round-trips on a two-ingredient stack — the user
+ * watched it discover, one call at a time, that brands it was never going to
+ * buy were unverified. The lookups are cached and independent, so doing them
+ * here in parallel costs about as much as the slowest one and removes those
+ * turns entirely.
+ *
+ * Grade F is dropped rather than reported. F means Senso holds actual negative
+ * evidence — an FDA warning letter, a failed label-accuracy test — so there is
+ * no version of "best value" that ends with buying it, and surfacing it only
+ * invites the agent to spend a turn rejecting it.
+ *
+ * UNVERIFIED is NOT dropped. Most real supplement brands have no third-party
+ * record at all; filtering them would leave an empty shelf and quietly imply
+ * the remaining few were vetted. They are labelled and kept.
+ */
+async function withTrust(entries: CatalogEntry[]): Promise<unknown[]> {
+  const ranked = entries
+    .map((e) => ({ e, costPerGramUSD: Number(calculateCostPerGram(e).toFixed(4)) }))
+    .sort((a, b) => a.costPerGramUSD - b.costPerGramUSD)
+    .slice(0, 6);
+
+  const withGrades = await Promise.all(
+    ranked.map(async ({ e, costPerGramUSD }) => {
+      const trust = await getBrandTrust(e.brand).catch(() => null);
+      return {
+        id: e.id,
+        brand: e.brand,
+        name: e.productName.slice(0, 60),
+        priceUSD: e.totalPriceUSD,
+        subscribeAndSavePct: e.subscribeAndSaveDiscountPct,
+        servings: e.servingsPerContainer,
+        vendor: e.vendorName,
+        costPerGramUSD,
+        trustGrade: trust ? trustGrade(trust.score) : '?',
+        trustVerified: trust ? trust.source === 'SENSO_VERIFIED' : false,
+      };
+    }),
+  );
+
+  return withGrades.filter((p) => p.trustGrade !== 'F').slice(0, 5);
+}
+
 /** Turns an internal product id into something a person recognises. */
 function label(productId: unknown, ctx: ToolContext): string {
   const entry = ctx.discovered.get(String(productId));
@@ -171,19 +217,7 @@ export const AGENT_TOOLS: ToolDefinition[] = [
         // calculate_true_cost uses, on merchant-stated price and servings — so
         // it is a real computation, not an estimate the model invented, and an
         // audit can still revise it downward when a label hides filler.
-        products: result.entries
-          .map((e) => ({
-            id: e.id,
-            brand: e.brand,
-            name: e.productName.slice(0, 60),
-            priceUSD: e.totalPriceUSD,
-            subscribeAndSavePct: e.subscribeAndSaveDiscountPct,
-            servings: e.servingsPerContainer,
-            vendor: e.vendorName,
-            costPerGramUSD: Number(calculateCostPerGram(e).toFixed(4)),
-          }))
-          .sort((a, b) => a.costPerGramUSD - b.costPerGramUSD)
-          .slice(0, 5),
+        products: await withTrust(result.entries),
         ...(result.entries.length === 0
           ? {
               hint:

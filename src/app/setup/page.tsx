@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { Navbar } from "@/components/navbar";
 import { CheckCircle2, AlertTriangle, XCircle, Loader2, ExternalLink, RefreshCw } from "lucide-react";
 
 import type { Health, Integration } from "@/app/api/status/route";
@@ -86,7 +87,9 @@ export default function SetupPage() {
   };
 
   return (
-    <main className="min-h-screen bg-[#08080a] text-white px-4 sm:px-6 py-10">
+    <>
+      <Navbar />
+      <main className="min-h-screen bg-[#08080a] text-white px-4 sm:px-6 py-10">
       <div className="max-w-3xl mx-auto">
         <div className="flex items-start justify-between gap-4 mb-2">
           <h1 className="text-2xl font-bold tracking-tight">System status</h1>
@@ -198,6 +201,7 @@ export default function SetupPage() {
           </ol>
         </div>
       </div>
-    </main>
+      </main>
+    </>
   );
 }

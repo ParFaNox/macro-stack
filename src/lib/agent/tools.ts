@@ -38,8 +38,9 @@ export interface ToolDefinition {
   name: string;
   description: string;
   parameters: Record<string, unknown>;
-  /** Short label for the UI trace. */
-  summarise: (args: Record<string, never>) => string;
+  /** Short label for the UI trace. Gets the context so it can name a product
+   *  the user recognises instead of echoing an internal id. */
+  summarise: (args: Record<string, never>, ctx: ToolContext) => string;
   run: (args: Record<string, never>, ctx: ToolContext) => Promise<unknown>;
 }
 
@@ -49,6 +50,12 @@ export interface ToolDefinition {
  * loop terminate instead of eating the whole turn budget.
  */
 const MAX_SEARCHES_PER_RUN = 4;
+
+/** Turns an internal product id into something a person recognises. */
+function label(productId: unknown, ctx: ToolContext): string {
+  const entry = ctx.discovered.get(String(productId));
+  return entry ? `${entry.brand} ${entry.productName}`.slice(0, 52) : String(productId);
+}
 
 const str = (description: string) => ({ type: 'string', description });
 const num = (description: string) => ({ type: 'number', description });
@@ -169,7 +176,7 @@ export const AGENT_TOOLS: ToolDefinition[] = [
       properties: { productId: str('The product id returned by search_products') },
       required: ['productId'],
     },
-    summarise: (a) => `Reading the label for ${a.productId}`,
+    summarise: (a, ctx) => `Reading the label for ${label(a.productId, ctx)}`,
     async run(args, ctx) {
       const { productId } = args as unknown as { productId: string };
       const entry = ctx.discovered.get(productId);
@@ -228,7 +235,7 @@ export const AGENT_TOOLS: ToolDefinition[] = [
       properties: { productId: str('The product id returned by search_products') },
       required: ['productId'],
     },
-    summarise: (a) => `Computing true cost per active gram for ${a.productId}`,
+    summarise: (a, ctx) => `Costing ${label(a.productId, ctx)} per active gram`,
     async run(args, ctx) {
       const { productId } = args as unknown as { productId: string };
       const entry = ctx.discovered.get(productId);

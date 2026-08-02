@@ -415,25 +415,41 @@ const KNOWN_BRANDS: Record<string, string> = {
   'drinklmnt.com': 'LMNT',
   'justingredients.com': 'JustIngredients',
   'transparentlabs.com': 'Transparent Labs',
+  '1upnutrition.com': '1UP Nutrition',
   'legionathletics.com': 'Legion Athletics',
   'thorne.com': 'Thorne',
   'optimumnutrition.com': 'Optimum Nutrition',
 };
 
+/** Words that start a product name rather than a brand. */
+const GENERIC_TITLE_WORDS =
+  /^(creatine|whey|protein|electrolyte|electrolytes|pure|micronized|instantized|organic|premium|daily|hydration|beta|l-|citrulline|the|100%)/i;
+
 function brandFromMerchant(merchant: string, title: string): string {
   const host = merchant.replace(/\.myshopify\.com$/, '.com').toLowerCase();
   if (KNOWN_BRANDS[host]) return KNOWN_BRANDS[host];
+
+  // Many storefronts are resellers — "cafeguyglobal.com" sells "Warrior
+  // Creatine Monohydrate". The domain is the shop, the title carries the
+  // brand. When the title opens with a proper noun rather than a product word,
+  // trust the title: "Warrior" is a brand a user can look up, and it is what
+  // the trust lookup needs to match on.
+  const first = title.trim().split(/\s+/)[0] ?? '';
+  if (first.length >= 3 && /^[A-Z0-9]/.test(first) && !GENERIC_TITLE_WORDS.test(first)) {
+    return first.replace(/[^\w'&-]/g, '');
+  }
 
   const bare = host.replace(/^(shop|store|www)\./, '').replace(/\.[a-z.]{2,}$/, '');
 
   // Only split on real separators. Squashed domains stay squashed rather than
   // being cut at arbitrary points, and get title-cased as one word.
-  const words = bare.split(/[-_.]/).filter(Boolean);
-  const pretty = words
-    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-    .join(' ');
-
-  return pretty || title.split(/[\s-]/)[0];
+  return (
+    bare
+      .split(/[-_.]/)
+      .filter(Boolean)
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(' ') || first
+  );
 }
 
 /**

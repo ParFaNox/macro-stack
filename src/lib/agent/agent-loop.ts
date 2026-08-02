@@ -151,7 +151,7 @@ export async function runAgent({ goal, budgetUSD, onEvent, signal }: AgentRunOpt
           type: 'tool_call',
           id: call.id,
           name: call.name,
-          summary: tool.summarise(call.args),
+          summary: tool.summarise(call.args, ctx),
           args: call.args,
         });
 

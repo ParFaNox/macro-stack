@@ -309,9 +309,11 @@ export async function optimizeStack(
         `${result.query}: ${result.entries.length} candidate product(s) found`,
         {
           source:
-            result.sourceMode === 'LIVE_RETAIL_SEARCH'
-              ? 'Live retailer listings (Bright Data)'
-              : 'Seed catalog',
+            result.sourceMode === 'PRAVA_SHOP_SEARCH'
+              ? 'Live merchants via Prava shop_search'
+              : result.sourceMode === 'LIVE_RETAIL_SEARCH'
+                ? 'Live retailer listings (Bright Data)'
+                : 'Seed catalog',
         },
       );
     }

@@ -4,6 +4,8 @@ import { z } from 'zod';
 import type { CatalogEntry } from '@/types/agent';
 import { SUPPLEMENT_CATALOG, matchIngredientFamily } from './catalog';
 import { DEFAULT_VISION_BASE_URL, visionModelId } from './vision-auditor';
+import { isConnected as isPravaShoppingConnected } from '@/lib/prava/oauth';
+import { pravaShopSearch } from '@/lib/prava/shop-client';
 
 /**
  * Product search.
@@ -24,7 +26,7 @@ import { DEFAULT_VISION_BASE_URL, visionModelId } from './vision-auditor';
  * that wasn't.
  */
 
-export type ProductSourceMode = 'LIVE_RETAIL_SEARCH' | 'SEED_CATALOG';
+export type ProductSourceMode = 'PRAVA_SHOP_SEARCH' | 'LIVE_RETAIL_SEARCH' | 'SEED_CATALOG';
 
 export interface ProductSearchResult {
   entries: CatalogEntry[];
@@ -40,9 +42,19 @@ export function hasBrightDataCredentials(): boolean {
   );
 }
 
+/**
+ * Provider precedence: Prava first when connected, because it needs no third
+ * party and keeps discovery inside the payments provider we already use.
+ * Bright Data is the fallback, and the seed catalog always works offline.
+ */
 export function productSearchMode(): ProductSourceMode {
   if (process.env.PRODUCT_SEARCH_PROVIDER === 'seed') return 'SEED_CATALOG';
-  // A fixture stands in for credentials so the path can be exercised offline.
+  if (process.env.PRODUCT_SEARCH_PROVIDER === 'brightdata') {
+    return hasBrightDataCredentials() || process.env.BRIGHTDATA_FIXTURE?.trim()
+      ? 'LIVE_RETAIL_SEARCH'
+      : 'SEED_CATALOG';
+  }
+  if (isPravaShoppingConnected()) return 'PRAVA_SHOP_SEARCH';
   if (process.env.BRIGHTDATA_FIXTURE?.trim()) return 'LIVE_RETAIL_SEARCH';
   return hasBrightDataCredentials() ? 'LIVE_RETAIL_SEARCH' : 'SEED_CATALOG';
 }
@@ -325,6 +337,47 @@ async function searchBrightData(query: string, family: string): Promise<CatalogE
   }
 }
 
+// --- Prava shop_search provider ----------------------------------------------
+
+/**
+ * Real merchants via Prava's MCP. Shares Bright Data's normalisation and
+ * mapping, because the awkward part — turning marketing copy into grams and
+ * servings — is identical whoever supplied the row.
+ */
+async function searchPravaShop(query: string, family: string): Promise<CatalogEntry[]> {
+  const hits = await pravaShopSearch(`${query} supplement`, 10);
+  if (hits.length === 0) throw new Error('Prava shop_search returned no products');
+
+  const normalised = await normaliseHits(hits, family);
+  if (normalised.length === 0) throw new Error('No Prava products could be normalised');
+
+  return normalised.map((p, i) => {
+    const hit = hits[i];
+    return {
+      id: `prava_${slugify(p.brand)}_${slugify(p.productName)}_${i}`,
+      brand: p.brand,
+      productName: p.productName,
+      imageUrl: hit?.image ?? '',
+      // Real listings carry product photos, not supplement-facts panels, so the
+      // auditor will report low confidence. That is the honest outcome.
+      labelImageUrl: hit?.image ?? '',
+      totalPriceUSD: p.totalPriceUSD,
+      servingsPerContainer: p.servingsPerContainer,
+      activeIngredients: [
+        {
+          name: p.activeIngredientName,
+          amountPerServingGrams: p.amountPerServingGrams,
+          purityPercentage: p.purityPercentage,
+        },
+      ],
+      subscribeAndSaveDiscountPct: p.subscribeAndSaveDiscountPct,
+      checkoutUrl: hit?.link ?? '',
+      vendorName: p.vendorName,
+      ingredientFamily: family,
+    } satisfies CatalogEntry;
+  });
+}
+
 // --- Public entry point ------------------------------------------------------
 
 /**
@@ -336,13 +389,18 @@ async function searchBrightData(query: string, family: string): Promise<CatalogE
 export async function searchProducts(query: string): Promise<ProductSearchResult> {
   const family = matchIngredientFamily(query) ?? query;
 
-  if (productSearchMode() === 'SEED_CATALOG') {
+  const mode = productSearchMode();
+
+  if (mode === 'SEED_CATALOG') {
     return { entries: searchSeedCatalog(query), sourceMode: 'SEED_CATALOG', query };
   }
 
   try {
-    const entries = await searchBrightData(query, family);
-    return { entries, sourceMode: 'LIVE_RETAIL_SEARCH', query };
+    const entries =
+      mode === 'PRAVA_SHOP_SEARCH'
+        ? await searchPravaShop(query, family)
+        : await searchBrightData(query, family);
+    return { entries, sourceMode: mode, query };
   } catch (error) {
     return {
       entries: searchSeedCatalog(query),

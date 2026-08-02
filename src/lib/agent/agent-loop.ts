@@ -21,7 +21,7 @@ import { TOOLS_BY_NAME, type ToolContext } from './tools';
  */
 
 const MAX_ITERATIONS = 12;
-const MAX_TOOL_CALLS = 24;
+const MAX_TOOL_CALLS = 30;
 
 const SYSTEM_PROMPT = `You are MacroStack, an autonomous supplement buying agent.
 
@@ -35,9 +35,12 @@ What "best value" means here — this is the whole point, do not shortcut it:
   whether the brand can be trusted.
 
 How to work:
-1. search_products for each ingredient the user wants.
-2. audit_supplement_label on the candidates. The label tells you what is really
-   in the tub. Watch for proprietary blends and amino spiking.
+1. search_products ONCE per ingredient. Searching the same thing again returns
+   the same products and wastes a turn — if you have candidates, move on.
+2. search_products already returns candidates sorted by cost per gram, cheapest
+   first. Audit only the TWO cheapest per ingredient — the label tells you what
+   is really in the tub, and a cheap product with a proprietary blend or amino
+   spiking is not cheap. Auditing every candidate wastes the run.
 3. calculate_true_cost before comparing anything. Never estimate cost per gram
    yourself — call the tool, it does real arithmetic.
 4. check_brand_trust when a price looks too good, or a label raises a flag. A
@@ -49,8 +52,9 @@ not depend on each other. Search every ingredient at once; audit several
 candidates at once. Only wait for a result when your next choice genuinely
 depends on it.
 
-You have a limited number of tool calls. Audit the plausible
-candidates, not every product. Think out loud briefly before each tool call so
+You have a limited number of tool calls, so spend them on the shortlist, not
+on every product. A good run is: two searches, four audits, four costings, two
+or three trust checks, then propose. Think out loud briefly before each tool call so
 the user can follow your reasoning — one or two sentences, not an essay.
 
 If an ingredient has no products, say so plainly and continue with the rest
@@ -80,7 +84,11 @@ export interface AgentRunOptions {
 }
 
 export async function runAgent({ goal, budgetUSD, onEvent, signal }: AgentRunOptions): Promise<void> {
-  const ctx: ToolContext = { discovered: new Map<string, CatalogEntry>(), budgetUSD };
+  const ctx: ToolContext = {
+    discovered: new Map<string, CatalogEntry>(),
+    searched: new Set<string>(),
+    budgetUSD,
+  };
 
   const backend = createBackend(
     SYSTEM_PROMPT,
@@ -90,6 +98,7 @@ export async function runAgent({ goal, budgetUSD, onEvent, signal }: AgentRunOpt
 
   let iterations = 0;
   let toolCalls = 0;
+  let nudged = false;
 
   try {
     while (iterations < MAX_ITERATIONS) {
@@ -100,11 +109,23 @@ export async function runAgent({ goal, budgetUSD, onEvent, signal }: AgentRunOpt
 
       if (turn.text) onEvent({ type: 'thinking', text: turn.text });
 
-      // No tool calls means the model is talking rather than acting. If it
-      // never proposed a stack that is a dead end, so stop instead of looping.
+      // No tool calls means the model is talking rather than acting. Observed
+      // repeatedly: it finishes its research, summarises what it found in
+      // prose, and never calls propose_stack — so the user gets a trace and no
+      // stack. Ask once, explicitly, before giving up. Asking twice would just
+      // be a loop, so the second silence ends the run.
       if (turn.toolCalls.length === 0) {
-        onEvent({ type: 'done', iterations, toolCalls });
-        return;
+        if (nudged) {
+          onEvent({ type: 'done', iterations, toolCalls });
+          return;
+        }
+        nudged = true;
+        backend.addUserMessage(
+          'You have not proposed a stack yet. Call propose_stack now with the best ' +
+            'products you found, your reasoning, and what you rejected. Do not search ' +
+            'or audit anything further.',
+        );
+        continue;
       }
 
       const results: Array<{ id: string; name: string; result: unknown }> = [];

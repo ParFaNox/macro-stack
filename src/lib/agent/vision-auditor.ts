@@ -271,17 +271,33 @@ export function auditCacheStats(): { cached: number; live: number } {
  * them to mock, which makes the demo look fake for no reason. Cap in-flight
  * calls and retry the ones that do get throttled.
  */
-const MAX_CONCURRENT_VISION_CALLS = 4;
+const MAX_CONCURRENT_VISION_CALLS = 3;
+
+/**
+ * Minimum spacing between calls.
+ *
+ * Concurrency alone is not enough: three at a time, each taking ~1s, still
+ * issues ~180 requests a minute against a 20/minute cap. The gap is what
+ * actually keeps a burst inside the quota — it costs a few seconds and buys a
+ * run that finishes.
+ */
+const MIN_GAP_MS = Number(process.env.VISION_MIN_GAP_MS ?? 900);
+let lastStarted = 0;
+
 let inFlight = 0;
 const waiting: Array<() => void> = [];
 
 async function acquireSlot(): Promise<void> {
   if (inFlight < MAX_CONCURRENT_VISION_CALLS) {
     inFlight++;
-    return;
+  } else {
+    await new Promise<void>((resolve) => waiting.push(resolve));
+    inFlight++;
   }
-  await new Promise<void>((resolve) => waiting.push(resolve));
-  inFlight++;
+
+  const wait = lastStarted + MIN_GAP_MS - Date.now();
+  if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+  lastStarted = Date.now();
 }
 
 function releaseSlot(): void {
@@ -403,6 +419,28 @@ export async function auditNutritionLabel(imageUrl: string): Promise<LabelAuditR
   const cacheable = !imageUrl.startsWith('data:');
   const cached = cacheable ? auditCache.get(cacheKey(imageUrl)) : undefined;
   if (cached) return cached;
+
+  // Two tools (audit_supplement_label and calculate_true_cost) routinely want
+  // the same label in the same turn, and the optimizer audits a whole group at
+  // once. Without this, identical work runs twice and each copy competes for
+  // the same quota. Join the call already in flight instead.
+  if (cacheable) {
+    const key = cacheKey(imageUrl);
+    const running = inFlightAudits.get(key);
+    if (running) return running;
+
+    const promise = performAudit(imageUrl, key).finally(() => inFlightAudits.delete(key));
+    inFlightAudits.set(key, promise);
+    return promise;
+  }
+
+  return performAudit(imageUrl, null);
+}
+
+const inFlightAudits = new Map<string, Promise<LabelAuditResult>>();
+
+async function performAudit(imageUrl: string, key: string | null): Promise<LabelAuditResult> {
+  const cacheable = key !== null;
 
   // Retrying a rate-limited call spends the very quota it is waiting on: at 15
   // labels x 3 attempts you issue 45 requests against a 20/min cap and every

@@ -417,12 +417,53 @@ g('Auto-renewal shield');
   }
 }
 
+// ------------------------------------------------- agent link & system status
+
+g('Prava agent link and status');
+{
+  const status = await req('/api/status');
+  ok('status endpoint responds', status.status === 200, `got ${status.status}`);
+  ok('status reports every integration',
+     Array.isArray(status.body.integrations) && status.body.integrations.length >= 6,
+     `got ${status.body.integrations?.length}`);
+  ok('every integration states a health',
+     (status.body.integrations ?? []).every((i) => ['live', 'degraded', 'off'].includes(i.health)));
+  ok('status never leaks a key value',
+     !JSON.stringify(status.body).match(/sk_|gsk_|AQ\.Ab8|pk_test/));
+
+  const link = await req('/api/prava/link');
+  ok('link status responds', link.status === 200, `got ${link.status}`);
+  ok('link status reports whether it is linked', typeof link.body.linked === 'boolean');
+
+  // The private half of the agent key must never cross the wire.
+  ok('link status never returns the private key',
+     !JSON.stringify(link.body).includes('privateKey'));
+
+  const products = await req('/api/optimize', json({
+    targetBudgetUSD: 120, targetIngredients: ['Creatine'],
+  }));
+  ok('optimize reports which source produced the products',
+     ['PRAVA_SHOP_SEARCH', 'LIVE_RETAIL_SEARCH', 'SEED_CATALOG'].includes(products.body.productSource),
+     `got ${products.body.productSource}`);
+
+  if (link.body.linked) {
+    ok('a linked agent gets real merchant products',
+       products.body.productSource === 'PRAVA_SHOP_SEARCH',
+       `linked but source was ${products.body.productSource}`);
+    ok('real products link to a real merchant page',
+       (products.body.recommendedProducts ?? []).every((p) => /^https:\/\//.test(p.checkoutUrl)));
+  } else {
+    skip('real merchant products (agent not linked — visit /setup)');
+  }
+}
+
 // ----------------------------------------------------------------------- pages
 
 g('Pages render');
 {
   for (const [label, path] of [
     ['landing', '/'], ['compare', '/compare'], ['agent console', '/agent'],
+    ['setup', '/setup'],
     ['login', '/login'], ['signup', '/signup'], ['profile', '/profile'],
     ['mock merchant', '/mock-merchant?product=Test&price=24.99&discount=15'],
   ]) {

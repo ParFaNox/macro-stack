@@ -29,6 +29,8 @@ export interface ToolContext {
   /** Products the agent has discovered, keyed by id, so later tools can refer
    *  to them without the model having to echo whole objects back. */
   discovered: Map<string, CatalogEntry>;
+  /** Ingredient families already searched this run, so a repeat is caught. */
+  searched: Set<string>;
   budgetUSD: number;
 }
 
@@ -40,6 +42,13 @@ export interface ToolDefinition {
   summarise: (args: Record<string, never>) => string;
   run: (args: Record<string, never>, ctx: ToolContext) => Promise<unknown>;
 }
+
+/**
+ * Ceiling on searches per run. Four covers any realistic stack (the catalog has
+ * five families and a user asks for two or three), while making a rephrasing
+ * loop terminate instead of eating the whole turn budget.
+ */
+const MAX_SEARCHES_PER_RUN = 4;
 
 const str = (description: string) => ({ type: 'string', description });
 const num = (description: string) => ({ type: 'number', description });
@@ -65,20 +74,75 @@ export const AGENT_TOOLS: ToolDefinition[] = [
 
       for (const entry of result.entries) ctx.discovered.set(entry.id, entry);
 
+      // Searching the same ingredient twice is a loop, not research. Observed:
+      // a run spent 11 of its 12 turns rephrasing the same two searches
+      // ("electrolyte powder", "electrolyte drink mix", "LMNT Recharge") and
+      // never proposed anything.
+      //
+      // Deduping by family is not enough on its own, because a rephrase that
+      // matches no family looks new every time. So there is also a hard ceiling
+      // on searches per run: past it, the tool refuses and says what to do
+      // instead. A guardrail that always converges beats a prompt that usually
+      // does.
+      const family = result.entries[0]?.ingredientFamily ?? ingredient.toLowerCase();
+
+      if (ctx.searched.size >= MAX_SEARCHES_PER_RUN && !ctx.searched.has(family)) {
+        return {
+          error:
+            `Search limit reached (${MAX_SEARCHES_PER_RUN} per run). You have ` +
+            `${ctx.discovered.size} candidate products already. Stop searching: audit them, ` +
+            'price them with calculate_true_cost, and call propose_stack with the best of them.',
+          candidateIds: [...ctx.discovered.keys()].slice(0, 12),
+        };
+      }
+
+      if (ctx.searched.has(family)) {
+        return {
+          alreadySearched: family,
+          found: result.entries.length,
+          note:
+            `You already searched ${family} and have these candidates. Searching again ` +
+            'returns the same products. Audit them with audit_supplement_label, price them ' +
+            'with calculate_true_cost, then call propose_stack.',
+          products: result.entries.slice(0, 6).map((e) => ({
+            id: e.id,
+            brand: e.brand,
+            name: e.productName.slice(0, 60),
+            priceUSD: e.totalPriceUSD,
+            servings: e.servingsPerContainer,
+          })),
+        };
+      }
+      ctx.searched.add(family);
+
       return {
         source: result.sourceMode,
         ...(result.fallbackReason ? { note: result.fallbackReason } : {}),
         found: result.entries.length,
-        products: result.entries.map((e) => ({
-          id: e.id,
-          brand: e.brand,
-          name: e.productName,
-          priceUSD: e.totalPriceUSD,
-          subscribeAndSavePct: e.subscribeAndSaveDiscountPct,
-          servings: e.servingsPerContainer,
-          vendor: e.vendorName,
-          labelImageUrl: e.labelImageUrl,
-        })),
+        // Trimmed deliberately. Image URLs are long, the model never needs one
+        // (it audits by id), and on a free-tier token budget those wasted
+        // tokens are the difference between finishing a run and a 429.
+        // Sorted cheapest-per-gram first, with that figure included.
+        //
+        // Without it the agent had to audit and price every candidate before it
+        // could rank anything, which with 23 real products took more tool calls
+        // than a run is allowed. The number comes from the same function
+        // calculate_true_cost uses, on merchant-stated price and servings — so
+        // it is a real computation, not an estimate the model invented, and an
+        // audit can still revise it downward when a label hides filler.
+        products: result.entries
+          .map((e) => ({
+            id: e.id,
+            brand: e.brand,
+            name: e.productName.slice(0, 60),
+            priceUSD: e.totalPriceUSD,
+            subscribeAndSavePct: e.subscribeAndSaveDiscountPct,
+            servings: e.servingsPerContainer,
+            vendor: e.vendorName,
+            costPerGramUSD: Number(calculateCostPerGram(e).toFixed(4)),
+          }))
+          .sort((a, b) => a.costPerGramUSD - b.costPerGramUSD)
+          .slice(0, 5),
         ...(result.entries.length === 0
           ? {
               hint:
@@ -115,7 +179,7 @@ export const AGENT_TOOLS: ToolDefinition[] = [
       return {
         productId,
         source: audit.source,
-        activeIngredients: audit.activeIngredients,
+        activeIngredients: audit.activeIngredients.slice(0, 6),
         servingsPerContainer: audit.servingsPerContainer,
         fillerPercentage: audit.fillerPercentage,
         deceptiveLabellingFlags: audit.fillerCallouts,
@@ -145,8 +209,10 @@ export const AGENT_TOOLS: ToolDefinition[] = [
         grade: trustGrade(trust.score),
         verified: trust.source === 'SENSO_VERIFIED',
         signals: trust.signals,
-        verdict: trust.verdict.slice(0, 400),
-        citations: trust.citations.map((c) => c.title),
+        // Trimmed: the model needs the finding, not the essay, and every
+        // character here is resent on every later turn.
+        verdict: trust.verdict.slice(0, 220),
+        citations: trust.citations.slice(0, 3).map((c) => c.title),
       };
     },
   },

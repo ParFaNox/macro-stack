@@ -3,9 +3,8 @@ import { z } from 'zod';
 
 import type { CatalogEntry } from '@/types/agent';
 import { SUPPLEMENT_CATALOG, matchIngredientFamily } from './catalog';
-import { DEFAULT_VISION_BASE_URL, visionModelId } from './vision-auditor';
-import { isConnected as isPravaShoppingConnected } from '@/lib/prava/oauth';
-import { pravaShopSearch } from '@/lib/prava/shop-client';
+import { agentBaseUrl, agentModelId, nextKey } from './model-backend';
+import { isPravaShoppingConnected, pravaShopSearch } from '@/lib/prava/shop-client';
 
 /**
  * Product search.
@@ -69,13 +68,18 @@ function searchSeedCatalog(query: string): CatalogEntry[] {
 
 // --- Bright Data provider ----------------------------------------------------
 
-/** One row as it comes back from Google Shopping via SERP API. */
+/** One unstructured product row, from Google Shopping or from Prava. */
 interface ShoppingHit {
   title: string;
   price?: string;
   merchant?: string;
   link?: string;
   image?: string;
+  /** Merchant copy, when the source supplies it. This is where the actual
+   *  per-serving dosing usually hides, so it is worth passing to the model. */
+  description?: string;
+  /** Stated by the merchant on the variant. Trusted over any model estimate. */
+  servings?: number;
 }
 
 /**
@@ -228,18 +232,22 @@ For each row you can confidently interpret, derive:
 - brand: the manufacturer, from the title.
 - productName: a clean product name including container size if shown.
 - totalPriceUSD: the numeric price.
-- servingsPerContainer: from the title if stated ("60 servings"), otherwise
-  compute it from container size and a typical serving for that ingredient
-  (creatine 5 g, beta-alanine 3.2 g, citrulline 6 g, whey 30 g).
-- activeIngredientName, amountPerServingGrams: the main active compound and
-  its grams per serving.
+- servingsPerContainer: use the row's \`servings\` field when present — the
+  merchant stated it, do not second-guess it. Otherwise take it from the title
+  ("60 servings"), and only as a last resort compute it from container size and
+  a typical serving (creatine 5 g, beta-alanine 3.2 g, citrulline 6 g, whey 30 g).
+- activeIngredientName, amountPerServingGrams: the main active compound and its
+  grams per serving. The \`description\` field, when present, is the merchant's
+  own copy — prefer any dosing it states over an assumption.
 - purityPercentage: 97-100 for a plain single-ingredient powder; much lower
-  (40-70) if the title suggests a blend, matrix, or flavoured complex.
+  (40-70) if the title or description suggests a blend, matrix, proprietary
+  formula, or flavoured complex.
 - subscribeAndSaveDiscountPct: 0 unless a subscription discount is stated.
-- vendorName: the retailer.
+- vendorName: the retailer or merchant domain.
 
-Skip any row you cannot interpret — do not invent products. Return ONLY JSON:
-{"products":[{...}]}`;
+Return one record per input row, in the SAME ORDER, so results line up with
+their source. Skip a row only if it is not a supplement at all. Do not invent
+products. Return ONLY JSON: {"products":[{...}]}`;
 
 /**
  * The shopping rows are unstructured marketing text, so an LLM pass normalises
@@ -250,16 +258,21 @@ async function normaliseHits(
   hits: ShoppingHit[],
   family: string,
 ): Promise<z.infer<typeof NormalisedProductSchema>['products']> {
+  // Runs on the AGENT provider, not the vision one. This is a text task — it
+  // reads titles and merchant copy, never an image — and the vision provider's
+  // free tier is the scarcest resource in the system. Sharing it meant every
+  // search competed with the label audits it was about to trigger, and losing
+  // that race silently dropped the whole result set back to the seed catalog.
   const client = new OpenAI({
-    apiKey: process.env.VISION_API_KEY,
-    baseURL: process.env.VISION_BASE_URL?.trim() || DEFAULT_VISION_BASE_URL,
+    apiKey: nextKey() || process.env.VISION_API_KEY,
+    baseURL: agentBaseUrl(),
   });
 
   const completion = await client.chat.completions.create({
-    model: visionModelId(),
+    model: agentModelId(),
     response_format: { type: 'json_object' },
     temperature: 0,
-    max_completion_tokens: 8192,
+    max_completion_tokens: 2048,
     messages: [
       { role: 'system', content: NORMALISE_PROMPT },
       {
@@ -344,41 +357,160 @@ async function searchBrightData(query: string, family: string): Promise<CatalogE
  * mapping, because the awkward part — turning marketing copy into grams and
  * servings — is identical whoever supplied the row.
  */
+/**
+ * Typical clinically-used serving, in grams, per family.
+ *
+ * Used only when neither the title nor the merchant's own copy states a dose.
+ * These are the standard doses the labels themselves quote, so they are a
+ * defensible floor rather than a guess pulled from nowhere.
+ */
+const TYPICAL_SERVING_GRAMS: Record<string, number> = {
+  Creatine: 5,
+  'Whey Protein': 30,
+  'L-Citrulline': 6,
+  'Beta-Alanine': 3.2,
+  Electrolytes: 6,
+};
+
+/** Pulls "5g", "5 g", "5000mg" out of a title or description. */
+function gramsFromText(text: string): number | undefined {
+  const g = text.match(/(\d+(?:\.\d+)?)\s*g(?:rams?)?\b/i);
+  if (g) {
+    const value = Number(g[1]);
+    // A "500g" in a title is the tub, not the serving. Serving sizes are small.
+    if (value > 0 && value <= 60) return value;
+  }
+  const mg = text.match(/(\d[\d,]*)\s*mg\b/i);
+  if (mg) {
+    const value = Number(mg[1].replace(/,/g, '')) / 1000;
+    if (value > 0 && value <= 60) return value;
+  }
+  return undefined;
+}
+
+/** Blend/matrix wording means the individual doses are hidden. */
+function purityFromText(text: string): number {
+  return /(proprietary|blend|matrix|complex|formula)/i.test(text) ? 60 : 98;
+}
+
+/**
+ * Merchant domains whose brand name cannot be recovered by splitting the
+ * domain. "bareperformancenutrition.com" has no word boundaries to split on,
+ * so title-casing it produces "Bareperformancenutrition" — which then shows up
+ * in the UI and in trust lookups, where it matches nothing.
+ *
+ * Only domains actually seen in Prava results are listed; anything else falls
+ * through to the generic splitter.
+ */
+const KNOWN_BRANDS: Record<string, string> = {
+  'bareperformancenutrition.com': 'Bare Performance Nutrition',
+  'getrawnutrition.com': 'Raw Nutrition',
+  'livemomentous.com': 'Momentous',
+  'gainsinbulk.com': 'Gains in Bulk',
+  'rysesupps.com': 'RYSE',
+  'pescience.com': 'PEScience',
+  'hugesupplements.com': 'Huge Supplements',
+  'nakednutrition.com': 'Naked Nutrition',
+  'shop.drberg.com': 'Dr. Berg',
+  'drinklmnt.com': 'LMNT',
+  'justingredients.com': 'JustIngredients',
+  'transparentlabs.com': 'Transparent Labs',
+  'legionathletics.com': 'Legion Athletics',
+  'thorne.com': 'Thorne',
+  'optimumnutrition.com': 'Optimum Nutrition',
+};
+
+function brandFromMerchant(merchant: string, title: string): string {
+  const host = merchant.replace(/\.myshopify\.com$/, '.com').toLowerCase();
+  if (KNOWN_BRANDS[host]) return KNOWN_BRANDS[host];
+
+  const bare = host.replace(/^(shop|store|www)\./, '').replace(/\.[a-z.]{2,}$/, '');
+
+  // Only split on real separators. Squashed domains stay squashed rather than
+  // being cut at arbitrary points, and get title-cased as one word.
+  const words = bare.split(/[-_.]/).filter(Boolean);
+  const pretty = words
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ');
+
+  return pretty || title.split(/[\s-]/)[0];
+}
+
+/**
+ * Real merchants via Prava.
+ *
+ * Deliberately does NOT use the LLM normalisation pass that Bright Data needs.
+ * Prava returns structured fields — price, merchant, and a variant label that
+ * states the serving count — so the only thing left to infer is grams per
+ * serving, which a regex over the merchant's own copy handles.
+ *
+ * That matters beyond tidiness: routing this through a model made product
+ * discovery share the agent's token budget, so a run would exhaust the daily
+ * quota mid-search and silently fall back to the seed catalog — the exact
+ * failure this whole path exists to avoid. Real products now cost zero tokens.
+ */
 async function searchPravaShop(query: string, family: string): Promise<CatalogEntry[]> {
-  const hits = await pravaShopSearch(`${query} supplement`, 10);
-  if (hits.length === 0) throw new Error('Prava shop_search returned no products');
+  const hits = await pravaShopSearch(`${query} supplement powder`, 8);
+  if (hits.length === 0) throw new Error('Prava shop search returned no products');
 
-  const normalised = await normaliseHits(hits, family);
-  if (normalised.length === 0) throw new Error('No Prava products could be normalised');
+  const entries = hits
+    .map((hit, i) => {
+      const price = Number(hit.price);
+      if (!(price > 0)) return null;
 
-  return normalised.map((p, i) => {
-    const hit = hits[i];
-    return {
-      id: `prava_${slugify(p.brand)}_${slugify(p.productName)}_${i}`,
-      brand: p.brand,
-      productName: p.productName,
-      imageUrl: hit?.image ?? '',
-      // Real listings carry product photos, not supplement-facts panels, so the
-      // auditor will report low confidence. That is the honest outcome.
-      labelImageUrl: hit?.image ?? '',
-      totalPriceUSD: p.totalPriceUSD,
-      servingsPerContainer: p.servingsPerContainer,
-      activeIngredients: [
-        {
-          name: p.activeIngredientName,
-          amountPerServingGrams: p.amountPerServingGrams,
-          purityPercentage: p.purityPercentage,
-        },
-      ],
-      subscribeAndSaveDiscountPct: p.subscribeAndSaveDiscountPct,
-      checkoutUrl: hit?.link ?? '',
-      vendorName: p.vendorName,
-      ingredientFamily: family,
-    } satisfies CatalogEntry;
-  });
+      const text = `${hit.title} ${hit.description ?? ''}`;
+      const servings = hit.servings ?? 30;
+      const grams = gramsFromText(text) ?? TYPICAL_SERVING_GRAMS[family] ?? 5;
+      const brand = brandFromMerchant(hit.merchant ?? '', hit.title);
+
+      return {
+        id: `prava_${slugify(brand)}_${slugify(hit.title)}_${i}`,
+        brand,
+        productName: hit.title.slice(0, 80),
+        imageUrl: hit.image ?? '',
+        // The merchant's own supplement-facts panel when they published one.
+        // Falling back to the hero shot is lossy but honest: the auditor
+        // reports low confidence rather than inventing a reading.
+        labelImageUrl: hit.labelImage ?? hit.image ?? '',
+        totalPriceUSD: price,
+        servingsPerContainer: servings,
+        activeIngredients: [
+          {
+            name: family,
+            amountPerServingGrams: grams,
+            purityPercentage: purityFromText(text),
+          },
+        ],
+        subscribeAndSaveDiscountPct: 0,
+        checkoutUrl: hit.link ?? '',
+        vendorName: hit.merchant ?? 'Unknown merchant',
+        ingredientFamily: family,
+      } satisfies CatalogEntry;
+    })
+    .filter((e): e is CatalogEntry => e !== null);
+
+  if (entries.length === 0) throw new Error('No Prava products had a usable price');
+  return entries;
 }
 
 // --- Public entry point ------------------------------------------------------
+
+/**
+ * Search results live for ten minutes.
+ *
+ * Long enough that a demo, a retry and a follow-up question all reuse one set
+ * of merchant calls; short enough that prices are not stale by the time anyone
+ * pays. Pinned to globalThis because Next's dev server recompiles this module
+ * on edit, which would otherwise silently empty the cache mid-session.
+ */
+const SEARCH_TTL_MS = 10 * 60_000;
+
+const globalRef = globalThis as typeof globalThis & {
+  __macrostackSearchCache?: Map<string, { at: number; result: ProductSearchResult }>;
+};
+const searchCache = (globalRef.__macrostackSearchCache ??= new Map());
+
+const inFlightSearches = new Map<string, Promise<ProductSearchResult>>();
 
 /**
  * Finds candidate products for one target ingredient.
@@ -395,12 +527,36 @@ export async function searchProducts(query: string): Promise<ProductSearchResult
     return { entries: searchSeedCatalog(query), sourceMode: 'SEED_CATALOG', query };
   }
 
-  try {
+  // Keyed by FAMILY, not by the raw query. The agent phrases the same want
+  // several ways ("creatine", "creatine monohydrate pure", "BulkSupplements
+  // creatine") and each phrasing previously paid for a fresh merchant search
+  // and a fresh normalisation. Since they resolve to the same family, they get
+  // the same answer — which also stops the agent burning its turn budget
+  // re-searching what it already has.
+  const cached = searchCache.get(family);
+  if (cached && Date.now() - cached.at < SEARCH_TTL_MS) {
+    return { ...cached.result, query };
+  }
+
+  // Join a search already running for this family rather than starting a
+  // second one; the agent routinely fires several at once.
+  const running = inFlightSearches.get(family);
+  if (running) return { ...(await running), query };
+
+  const work = (async () => {
     const entries =
       mode === 'PRAVA_SHOP_SEARCH'
         ? await searchPravaShop(query, family)
         : await searchBrightData(query, family);
-    return { entries, sourceMode: mode, query };
+    const result: ProductSearchResult = { entries, sourceMode: mode, query };
+    searchCache.set(family, { at: Date.now(), result });
+    return result;
+  })().finally(() => inFlightSearches.delete(family));
+
+  inFlightSearches.set(family, work);
+
+  try {
+    return await work;
   } catch (error) {
     return {
       entries: searchSeedCatalog(query),

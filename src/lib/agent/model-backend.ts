@@ -47,6 +47,8 @@ export interface ModelBackend {
   next(): Promise<ModelTurn>;
   /** Records the model's turn plus the tool results, ready for the next call. */
   addToolResults(results: Array<{ id: string; name: string; result: unknown }>): void;
+  /** Appends a plain instruction, for steering a run that has stalled. */
+  addUserMessage(text: string): void;
 }
 
 /**
@@ -68,8 +70,47 @@ export function agentBaseUrl(): string {
   );
 }
 
+/**
+ * Models to try, in order. Comma-separated in AGENT_MODEL.
+ *
+ * Free tiers meter per MODEL as well as per key, and the limit that actually
+ * bites is tokens-per-DAY, not per-minute — llama-3.3-70b allows 100k/day,
+ * which a few agent runs exhaust. Waiting does not help; the window is 24
+ * hours. So a run that hits a daily wall continues on the next model instead
+ * of dying, and the trace says which model produced the turn.
+ */
+function modelPool(): string[] {
+  const raw = process.env.AGENT_MODEL?.trim();
+  if (!raw) return [visionModelId()];
+  return raw.split(',').map((m) => m.trim()).filter(Boolean);
+}
+
+/** The model currently in use — advances only when one is exhausted. */
+let modelCursor = 0;
+
 export function agentModelId(): string {
-  return process.env.AGENT_MODEL?.trim() || visionModelId();
+  const pool = modelPool();
+  return pool[Math.min(modelCursor, pool.length - 1)];
+}
+
+/**
+ * Moves to the next model. Returns false when there is nothing left to try,
+ * which is the only case where the run genuinely cannot continue.
+ */
+function advanceModel(): boolean {
+  if (modelCursor >= modelPool().length - 1) return false;
+  modelCursor++;
+  return true;
+}
+
+/** True when the error is a daily cap — retrying inside this run is pointless. */
+function isDailyQuota(error: unknown): boolean {
+  const msg = error instanceof Error ? error.message : String(error);
+  return /per day|TPD|RPD/i.test(msg);
+}
+
+export function agentModelPool(): string[] {
+  return modelPool();
 }
 
 /**
@@ -105,6 +146,26 @@ export function backendKind(): BackendKind {
   return /generativelanguage\.googleapis\.com/.test(agentBaseUrl()) ? 'gemini' : 'openai';
 }
 
+/**
+ * Caps how much of a tool result goes into the transcript.
+ *
+ * Every turn resends the whole conversation, so a fat tool result is not paid
+ * for once — it is paid for on every subsequent turn. Groq's free tier allows
+ * 12k tokens a minute; at the previous 12,000-CHARACTER cap a single run could
+ * spend that several times over and die mid-reasoning with a 429.
+ *
+ * 1,800 characters is roughly 450 tokens: enough for a product list or a label
+ * audit with its flags, and the truncation is announced so the model knows it
+ * is looking at a prefix rather than silently reasoning over half a list.
+ */
+const MAX_TOOL_RESULT_CHARS = 1_800;
+
+export function compactToolResult(result: unknown): string {
+  const json = JSON.stringify(result);
+  if (json.length <= MAX_TOOL_RESULT_CHARS) return json;
+  return `${json.slice(0, MAX_TOOL_RESULT_CHARS)}… [truncated — ask for fewer items if you need more detail]`;
+}
+
 // --- OpenAI-style ------------------------------------------------------------
 
 interface OpenAIMessage {
@@ -135,7 +196,13 @@ function createOpenAIBackend(system: string, goal: string, signal?: AbortSignal)
           tools: toolSchemas(),
           tool_choice: 'auto',
           temperature: 0.2,
-          max_completion_tokens: 4096,
+          // Groq counts max_completion_tokens as RESERVED against the
+          // tokens-per-minute budget, not as a ceiling that only costs what it
+          // uses. At 4096 against a 12k/min free tier, two turns booked the
+          // whole minute and the third 429'd mid-reasoning. The agent emits a
+          // sentence of reasoning plus tool calls, so 1024 is ample and buys
+          // roughly four times as many turns per minute.
+          max_completion_tokens: Number(process.env.AGENT_MAX_TOKENS ?? 1024),
         },
         { signal },
       );
@@ -178,9 +245,13 @@ function createOpenAIBackend(system: string, goal: string, signal?: AbortSignal)
         messages.push({
           role: 'tool',
           tool_call_id: r.id,
-          content: JSON.stringify(r.result).slice(0, 12_000),
+          content: compactToolResult(r.result),
         });
       }
+    },
+
+    addUserMessage(text) {
+      messages.push({ role: 'user', content: text });
     },
   };
 }
@@ -207,7 +278,7 @@ interface GeminiContent {
  * runs in quick succession will hit it. Honours the API's own suggested delay
  * where it gives one.
  */
-async function withRetry<T>(fn: () => Promise<T>, attempts = 3): Promise<T> {
+async function withRetry<T>(fn: () => Promise<T>, attempts = 5): Promise<T> {
   let lastError: unknown;
 
   for (let i = 0; i < attempts; i++) {
@@ -216,8 +287,16 @@ async function withRetry<T>(fn: () => Promise<T>, attempts = 3): Promise<T> {
     } catch (error) {
       lastError = error;
       const message = error instanceof Error ? error.message : String(error);
-      if (!/429|quota|rate/i.test(message) || i === attempts - 1) throw error;
+      if (!/429|quota|rate/i.test(message)) throw error;
 
+      // A daily cap does not reset within any reasonable wait. Switch model
+      // and retry immediately; only give up once the pool is exhausted.
+      if (isDailyQuota(error)) {
+        if (!advanceModel()) throw error;
+        continue;
+      }
+
+      if (i === attempts - 1) throw error;
       const suggested = message.match(/retry in ([\d.]+)s/i);
       const waitMs = suggested ? Math.ceil(Number(suggested[1]) * 1000) + 500 : (i + 1) * 6000;
       await new Promise((r) => setTimeout(r, Math.min(waitMs, 30_000)));
@@ -317,13 +396,18 @@ function createGeminiBackend(system: string, goal: string, signal?: AbortSignal)
         })),
       });
     },
+
+    addUserMessage(text) {
+      contents.push({ role: 'user', parts: [{ text }] });
+    },
   };
 }
 
+/** Same budget as the OpenAI path, for the same reason — see compactToolResult. */
 function truncate(value: unknown): unknown {
   const json = JSON.stringify(value);
-  if (json.length <= 12_000) return value;
-  return { truncated: true, preview: json.slice(0, 12_000) };
+  if (json.length <= MAX_TOOL_RESULT_CHARS) return value;
+  return { truncated: true, preview: json.slice(0, MAX_TOOL_RESULT_CHARS) };
 }
 
 function safeParse(text: string): Record<string, never> {

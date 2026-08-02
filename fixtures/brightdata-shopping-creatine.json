@@ -1,0 +1,10 @@
+{
+  "_comment": "Shape of a Bright Data SERP API response for Google Shopping (tbm=shop&brd_json=1). Used by BRIGHTDATA_FIXTURE to exercise the live-search path without an account. Product names/prices are representative, not scraped.",
+  "shopping": [
+    { "title": "Optimum Nutrition Micronized Creatine Monohydrate Powder, 120 Servings, 600g", "price": "$34.99", "source": "Amazon.com", "link": "https://www.amazon.com/dp/B002DYIZEO", "image": "https://m.media-amazon.com/images/I/71creatine.jpg" },
+    { "title": "Thorne Creatine, NSF Certified for Sport, 90 Servings, 450g", "price": "$47.00", "source": "Thorne.com", "link": "https://www.thorne.com/products/dp/creatine", "image": "https://www.thorne.com/img/creatine.jpg" },
+    { "title": "BulkSupplements Creatine Monohydrate Powder 1kg (200 servings)", "price": "$29.96", "source": "BulkSupplements.com", "link": "https://www.bulksupplements.com/products/creatine-monohydrate", "image": "https://cdn.shopify.com/creatine1kg.jpg" },
+    { "title": "Cellucor COR-Performance Creatine Matrix Blend, 30 Servings", "price": "$44.99", "source": "Bodybuilding.com", "link": "https://www.bodybuilding.com/store/cellucor/creatine", "image": "https://bbcom.com/cor-creatine.jpg" },
+    { "title": "Nutricost Creatine Monohydrate Micronized 500g, 100 Servings", "price": "$19.95", "source": "Walmart", "link": "https://www.walmart.com/ip/nutricost-creatine", "image": "https://i5.walmartimages.com/creatine.jpg" }
+  ]
+}

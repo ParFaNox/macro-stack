@@ -41,9 +41,10 @@ export function hasBrightDataCredentials(): boolean {
 }
 
 export function productSearchMode(): ProductSourceMode {
-  return hasBrightDataCredentials() && process.env.PRODUCT_SEARCH_PROVIDER !== 'seed'
-    ? 'LIVE_RETAIL_SEARCH'
-    : 'SEED_CATALOG';
+  if (process.env.PRODUCT_SEARCH_PROVIDER === 'seed') return 'SEED_CATALOG';
+  // A fixture stands in for credentials so the path can be exercised offline.
+  if (process.env.BRIGHTDATA_FIXTURE?.trim()) return 'LIVE_RETAIL_SEARCH';
+  return hasBrightDataCredentials() ? 'LIVE_RETAIL_SEARCH' : 'SEED_CATALOG';
 }
 
 // --- Seed provider -----------------------------------------------------------
@@ -70,6 +71,29 @@ interface ShoppingHit {
  * to return parsed JSON rather than raw HTML, so there is no scraping logic here.
  */
 async function fetchShoppingResults(query: string, signal?: AbortSignal): Promise<ShoppingHit[]> {
+  // Fixture mode. The rest of this path — LLM normalisation, CatalogEntry
+  // mapping, label audit, trust lookup, ranking — is identical to the live
+  // path, so this verifies everything except Bright Data's own HTTP call. It
+  // exists because the provider was written against docs and never executed;
+  // shipping unrun code and calling it "ready" is how demos die.
+  const fixture = process.env.BRIGHTDATA_FIXTURE?.trim();
+  if (fixture) {
+    const { readFileSync } = await import('node:fs');
+    const { join } = await import('node:path');
+    const raw = JSON.parse(readFileSync(join(process.cwd(), fixture), 'utf8'));
+    const rows: unknown[] = raw?.shopping ?? raw?.organic ?? [];
+    return rows.slice(0, 12).map((r) => {
+      const row = r as Record<string, unknown>;
+      return {
+        title: String(row.title ?? ''),
+        price: row.price ? String(row.price) : undefined,
+        merchant: row.source ? String(row.source) : undefined,
+        link: row.link ? String(row.link) : undefined,
+        image: row.image ? String(row.image) : undefined,
+      };
+    });
+  }
+
   const url =
     'https://www.google.com/search?' +
     new URLSearchParams({
@@ -115,21 +139,75 @@ async function fetchShoppingResults(query: string, signal?: AbortSignal): Promis
   });
 }
 
+/**
+ * Tolerant on purpose. The model returns `null` for fields it can't determine
+ * (a shopping row rarely states a subscription discount), and a strict schema
+ * threw away the entire batch over one null. Missing optional values coerce to
+ * a sane default; only genuinely unusable rows are dropped.
+ */
 const NormalisedProductSchema = z.object({
   products: z.array(
     z.object({
       brand: z.string().min(1),
       productName: z.string().min(1),
-      totalPriceUSD: z.number().positive(),
-      servingsPerContainer: z.number().positive(),
+      totalPriceUSD: z.coerce.number().positive(),
+      servingsPerContainer: z.coerce.number().positive(),
       activeIngredientName: z.string().min(1),
-      amountPerServingGrams: z.number().positive(),
-      purityPercentage: z.number().min(0).max(100),
-      subscribeAndSaveDiscountPct: z.number().min(0).max(100),
+      amountPerServingGrams: z.coerce.number().positive(),
+      purityPercentage: z.coerce.number().min(0).max(100).nullish().transform((v) => v ?? 95),
+      subscribeAndSaveDiscountPct: z.coerce
+        .number()
+        .min(0)
+        .max(100)
+        .nullish()
+        .transform((v) => v ?? 0),
       vendorName: z.string().min(1),
     }),
   ),
 });
+
+/**
+ * Closes JSON the model left unterminated.
+ *
+ * Observed with `finish_reason: "stop"` — not truncation by token limit, the
+ * model simply stopped emitting closing brackets. Rather than discard a
+ * complete list of products over a missing `}`, balance the delimiters and
+ * retry the parse once.
+ */
+function repairJson(raw: string): string {
+  let text = raw.trim();
+
+  // Strip markdown fences if the model wrapped its output.
+  const fenced = text.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/);
+  if (fenced) text = fenced[1].trim();
+
+  const stack: string[] = [];
+  let inString = false;
+  let escaped = false;
+
+  for (const ch of text) {
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+    if (ch === '\\' && inString) {
+      escaped = true;
+      continue;
+    }
+    if (ch === '"') inString = !inString;
+    else if (!inString) {
+      if (ch === '{' || ch === '[') stack.push(ch);
+      else if (ch === '}' || ch === ']') stack.pop();
+    }
+  }
+
+  if (inString) text += '"';
+  // Drop a dangling comma before closing what's left open.
+  text = text.replace(/,\s*$/, '');
+  while (stack.length) text += stack.pop() === '{' ? '}' : ']';
+
+  return text;
+}
 
 const NORMALISE_PROMPT = `You turn raw shopping-search rows for sports supplements into
 structured product records.
@@ -182,7 +260,18 @@ async function normaliseHits(
   const raw = completion.choices[0]?.message?.content;
   if (!raw) throw new Error('Normalisation model returned an empty response');
 
-  const parsed = NormalisedProductSchema.safeParse(JSON.parse(raw));
+  let payload: unknown;
+  try {
+    payload = JSON.parse(raw);
+  } catch {
+    try {
+      payload = JSON.parse(repairJson(raw));
+    } catch {
+      throw new Error(`Normalisation output was not valid JSON: ${raw.slice(-160)}`);
+    }
+  }
+
+  const parsed = NormalisedProductSchema.safeParse(payload);
   if (!parsed.success) {
     throw new Error(`Normalisation output failed validation: ${parsed.error.message}`);
   }

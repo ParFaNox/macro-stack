@@ -148,7 +148,7 @@ export function AgentConsole({ compact = false }: { compact?: boolean }) {
             city: "San Francisco",
             state: "CA",
             zipCode: "94105",
-            email: "demo@macrostack.test",
+            email: "demo@macrostack.ai",
           },
           cardDetails: card as unknown as CheckoutExecutionPayload["cardDetails"],
         },
@@ -545,6 +545,20 @@ export function AgentConsole({ compact = false }: { compact?: boolean }) {
             )}
           </div>
         </div>
+
+      {/*
+        Rendered inside the console, not beside it.
+        It previously sat after </main> on the page, so extracting the console
+        left it behind and "Approve & buy" flipped state with nothing on screen.
+        It belongs with the state that drives it.
+      */}
+      <PasskeyModal
+        isOpen={passkeyOpen}
+        onClose={() => setPasskeyOpen(false)}
+        products={proposal?.products ?? []}
+        totalAmountUSD={proposal?.totalUSD ?? 0}
+        onAuthorized={onAuthorized}
+      />
     </div>
   );
 }

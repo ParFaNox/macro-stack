@@ -366,7 +366,7 @@ g('Checkout automation');
       products,
       shippingAddress: {
         fullName: 'Verify Bot', streetAddress: '1 Market St', city: 'SF',
-        state: 'CA', zipCode: '94105', email: 'verify@macrostack.test',
+        state: 'CA', zipCode: '94105', email: 'verify@macrostack.ai',
       },
       cardDetails: card,
     }));
@@ -405,7 +405,7 @@ g('Auto-renewal shield');
     const replay = await req('/api/mock-merchant/order', json({
       productName: 'Replay attempt', unitPriceUSD: 24.99, quantity: 1,
       subscribeAndSave: true, discountPct: 15, totalChargedUSD: 21.24,
-      cardNumber: globalThis.__cardNumber, email: 'verify@macrostack.test', shippingName: 'Verify Bot',
+      cardNumber: globalThis.__cardNumber, email: 'verify@macrostack.ai', shippingName: 'Verify Bot',
     }));
     ok('a replayed checkout is refused', replay.status === 402, `got ${replay.status}`);
 

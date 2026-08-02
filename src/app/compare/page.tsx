@@ -136,7 +136,7 @@ export default function ComparePage() {
             city: "San Francisco",
             state: "CA",
             zipCode: "94105",
-            email: "demo@macrostack.test",
+            email: "demo@macrostack.ai",
           },
           cardDetails: card as unknown as CheckoutExecutionPayload["cardDetails"],
         },

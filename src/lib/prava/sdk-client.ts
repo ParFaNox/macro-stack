@@ -41,6 +41,22 @@ export function pravaEnvironment(): PravaEnvironment {
  * this merchant, and an http://localhost value came back as
  * PROVISION_ERROR 403 from their upstream. Must be a reachable https origin.
  */
+/**
+ * Email sent to Prava when creating a session.
+ *
+ * Must be a real, routable address. We were sending demo@macrostack.test, and
+ * `.test` is a reserved TLD (RFC 2606) that can never resolve — Visa's
+ * attestation service rejected it as `badRequest`, which surfaced as a 400
+ * during passkey registration with no hint about the cause. The passkey is
+ * bound to the cardholder identity, and that identity has to be plausible.
+ *
+ * Set PRAVA_USER_EMAIL to your own address; the fallback is a real domain we
+ * control so a fresh clone still gets past validation.
+ */
+export function pravaUserEmail(): string {
+  return process.env.PRAVA_USER_EMAIL?.trim() || 'demo@macrostack.ai';
+}
+
 export function defaultMerchantUrl(): string {
   return process.env.PRAVA_MERCHANT_URL?.trim() || 'https://nutrimart-demo.example.com';
 }
@@ -336,7 +352,7 @@ export async function mintPravaCard(
 
   const session = await createPaymentSession({
     userId: req.userId ?? 'macrostack_demo_user',
-    userEmail: req.userEmail ?? 'demo@macrostack.test',
+    userEmail: req.userEmail ?? pravaUserEmail(),
     totalAmountUSD: req.amountUSD,
     merchantName: req.merchantName,
     merchantUrl: req.merchantUrl ?? defaultMerchantUrl(),

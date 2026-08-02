@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { createLog } from '@/lib/agent/logger';
 import {
   createPaymentSession,
+  pravaUserEmail,
   defaultMerchantUrl,
   getPaymentCredentials,
   pravaEnvironment,
@@ -178,7 +179,7 @@ export async function POST(request: Request) {
   try {
     const session = await createPaymentSession({
       userId: 'macrostack_demo_user',
-      userEmail: 'demo@macrostack.test',
+      userEmail: pravaUserEmail(),
       totalAmountUSD: amountUSD,
       merchantName,
       merchantUrl: defaultMerchantUrl(),

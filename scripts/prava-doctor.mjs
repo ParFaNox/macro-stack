@@ -70,7 +70,7 @@ const created = await api('/sessions', {
   method: 'POST',
   body: JSON.stringify({
     user_id: 'macrostack_doctor',
-    user_email: 'demo@macrostack.test',
+    user_email: process.env.PRAVA_USER_EMAIL?.trim() || 'demo@macrostack.ai',
     total_amount: AMOUNT.toFixed(2),
     currency: 'USD',
     integration_type: 'full_checkout',
